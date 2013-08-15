@@ -1,0 +1,8 @@
+* Thu Aug 15 2013 Ossama Othman <ossama.othman@intel.com> 14ffb07
+- Override hardcoded paths and filenames.
+- Added missing shared libraries to package.
+- Corrected packaging errors, and created new sample-hmi sub-package.
+- Removed executable bits from non-executable files.
+- Initial packaging of SmartDeviceLink.
+- Address build errors when using g++ 4.7 or better.
+
