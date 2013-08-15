@@ -60,11 +60,25 @@
 
 // ----------------------------------------------------------------------------
 
+#ifndef SDL_LOG4CXX_PROPERTIES_FILE
+#define SDL_LOG4CXX_PROPERTIES_FILE "log4cxx.properties"
+#endif
+
+#ifndef SDL_HMI_LINK_FILE
+#define SDL_HMI_LINK_FILE "hmi_link"
+#endif
+
+#ifndef SDL_HMI_BROWSER_PATH
+#define SDL_HMI_BROWSER_PATH "/usr/bin/chromium-browser"
+#define SDL_HMI_BROWSER_ARG0 "chromium-browser"
+#define SDL_HMI_BROWSER_ARG1 "--auth-schemes=basic,digest,ntlm"
+#endif
+
 namespace {
 
-const char kBrowser[] = "/usr/bin/chromium-browser";
-const char kBrowserName[] = "chromium-browser";
-const char kBrowserParams[] = "--auth-schemes=basic,digest,ntlm";
+const char kBrowser[] = SDL_HMI_BROWSER_PATH;
+const char kBrowserName[] = SDL_HMI_BROWSER_ARG0;
+const char kBrowserParams[] = SDL_HMI_BROWSER_ARG1;
 
 /**
  * Initialize HTML based HMI.
@@ -76,13 +90,13 @@ log4cxx::LoggerPtr logger = log4cxx::LoggerPtr(
 
 pid_t pid_hmi = 0;
 struct stat sb;
-if (stat("hmi_link", &sb) == -1) {
+if (stat(SDL_HMI_LINK_FILE, &sb) == -1) {
   LOG4CXX_INFO(logger, "File with HMI link doesn't exist!");
   return false;
 }
 
 std::ifstream file_str;
-file_str.open("hmi_link");
+file_str.open(SDL_HMI_LINK_FILE);
 
 if (!file_str.is_open()) {
   LOG4CXX_INFO(logger, "File with HMI link was not opened!");
@@ -158,13 +172,12 @@ switch (pid_hmi) {
  * \return EXIT_SUCCESS or EXIT_FAILURE
  */
 int main(int argc, char** argv) {
-
   // --------------------------------------------------------------------------
   // Logger initialization
 
   log4cxx::LoggerPtr logger = log4cxx::LoggerPtr(
                                 log4cxx::Logger::getLogger("appMain"));
-  log4cxx::PropertyConfigurator::configure("log4cxx.properties");
+  log4cxx::PropertyConfigurator::configure(SDL_LOG4CXX_PROPERTIES_FILE);
 
   LOG4CXX_INFO(logger, " Application started!");
 
