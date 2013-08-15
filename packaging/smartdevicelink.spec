@@ -54,14 +54,32 @@ cd SDL_Core
 make %{?_smp_mflags}
 
 %install
-# Don't run "make install".  We only care about the core SDL binary,
-# and HMI related files.
-mkdir -p %{buildroot}%{_bindir}
+# Don't run "make install".  We only care about the core SDL related
+# binaries, and HMI related files.
+mkdir -p %{buildroot}%{_bindir} %{buildroot}%{_libdir}
 mkdir -p %{buildroot}%{_sysconfdir}/%{name} %{buildroot}%{_datadir}/%{name}
 install -m 0755 SDL_Core/src/appMain/smartDeviceLinkCore %{buildroot}%{_bindir}
+
+install -m 0755 SDL_Core/src/components/TransportManager/libTransportManager.so %{buildroot}%{_libdir}
+install -m 0755 SDL_Core/src/components/AppMgr/libAppMgr.so %{buildroot}%{_libdir}
+install -m 0755 SDL_Core/src/components/ConnectionHandler/libconnectionHandler.so %{buildroot}%{_libdir}
+install -m 0755 SDL_Core/src/components/JSONHandler/libJSONHandler.so %{buildroot}%{_libdir}
+install -m 0755 SDL_Core/src/components/ProtocolHandler/libProtocolHandler.so %{buildroot}%{_libdir}
+install -m 0755 SDL_Core/src/components/Utils/libUtils.so %{buildroot}%{_libdir}
+install -m 0755 SDL_Core/src/thirdPartyLibs/encryption/libencryption.so %{buildroot}%{_libdir}
+install -m 0755 SDL_Core/src/thirdPartyLibs/logger/log4cplus-1.1.0/src/liblog4cplus.so.1.1.0 %{buildroot}%{_libdir}
+install -m 0755 SDL_Core/src/thirdPartyLibs/MessageBroker/libMessageBrokerClient.so %{buildroot}%{_libdir}
+install -m 0755 SDL_Core/src/thirdPartyLibs/MessageBroker/libMessageBrokerServer.so %{buildroot}%{_libdir}
+install -m 0755 SDL_Core/src/thirdPartyLibs/MessageBroker/libMessageBroker.so %{buildroot}%{_libdir}
+install -m 0755 SDL_Core/src/thirdPartyLibs/jsoncpp/libjsoncpp.so %{buildroot}%{_libdir}
+
 install -m 0644 SDL_Core/src/appMain/log4cplus.properties %{buildroot}%{_sysconfdir}/%{name}
 install -m 0644 SDL_Core/src/appMain/audio.8bit.wav %{buildroot}%{_datadir}/%{name}
 cp -R SDL_Core/src/components/HMI %{buildroot}%{_datadir}/%{name}
+
+pushd %{buildroot}%{_libdir}
+ln -s liblog4cplus.so.1.1.0 liblog4cplus.so.0
+popd
 
 %fdupes -s %{buildroot}%{_datadir}/%{name}
 
@@ -70,15 +88,18 @@ echo %{_datadir}/%{name}/HMI/index.html > %{buildroot}%{_sysconfdir}/%{name}/hmi
 
 %clean
 
+%post -p /sbin/ldconfig
+
+%postun -p /sbin/ldconfig
+
 %files
 %manifest %{name}.manifest
 %license LICENSE
 %{_bindir}/smartDeviceLinkCore
+%{_libdir}/*.so*
 %config %{_sysconfdir}/%{name}/log4cplus.properties
 %{_datadir}/%{name}/audio.8bit.wav
 
 %files sample-hmi
 %config %{_sysconfdir}/%{name}/hmi_link
 %{_datadir}/%{name}/HMI/*
-
-#%%files doc
