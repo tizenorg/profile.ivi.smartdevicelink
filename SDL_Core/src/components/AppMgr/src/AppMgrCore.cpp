@@ -64,6 +64,10 @@
 
 #include "ConnectionHandler/CConnectionHandler.hpp"
 
+#ifndef SDL_AUDIO_SAMPLE
+#define SDL_AUDIO_SAMPLE "audio.8bit.wav"
+#endif
+
 namespace {
     // We wait for some request form HMI:
     // UI::GetCapabilities, VR::GetCapabilities, TTS::GetCapabilities, Buttons::GetCapabilities
@@ -275,7 +279,7 @@ namespace {
         std::string filename;
         if (data_->bitsPerSample.get() == NsSmartDeviceLinkRPCV2::AudioCaptureQuality::FIX_8_BIT)
         {
-            filename = "audio.8bit.wav";
+            filename = SDL_AUDIO_SAMPLE;
             audioLength = 5000;
         }
         else if (data_->bitsPerSample.get() == NsSmartDeviceLinkRPCV2::AudioCaptureQuality::FIX_16_BIT)

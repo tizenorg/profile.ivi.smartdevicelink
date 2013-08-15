@@ -67,6 +67,22 @@
 #include "TransportManager/ITransportManager.hpp"
 #include "TransportManager/ITransportManagerDeviceListener.hpp"
 
+
+#ifndef SDL_LOG4CPLUS_PROPERTIES_FILE
+#define SDL_LOG4CPLUS_PROPERTIES_FILE "log4cplus.properties"
+#endif
+
+#ifndef SDL_HMI_LINK_FILE
+#define SDL_HMI_LINK_FILE "hmi_link"
+#endif
+
+#ifndef SDL_HMI_BROWSER_PATH
+#define SDL_HMI_BROWSER_PATH "/usr/bin/chromium-browser"
+#define SDL_HMI_BROWSER_ARG0 "chromium-browser"
+#define SDL_HMI_BROWSER_ARG1 "--auth-schemes=basic,digest,ntlm"
+#endif
+
+
 class CTransportManagerListener : public NsSmartDeviceLink::NsTransportManager::ITransportManagerDeviceListener
 {
 public:
@@ -131,7 +147,7 @@ int main(int argc, char** argv)
     /*** Components instance section***/
     /**********************************/
     Logger logger = Logger::getInstance(LOG4CPLUS_TEXT("appMain"));
-    PropertyConfigurator::doConfigure(LOG4CPLUS_TEXT("log4cplus.properties"));
+    PropertyConfigurator::doConfigure(LOG4CPLUS_TEXT(SDL_LOG4CPLUS_PROPERTIES_FILE));
     LOG4CPLUS_INFO(logger, " Application started!");
 
     NsSmartDeviceLink::NsTransportManager::ITransportManager * transportManager = NsSmartDeviceLink::NsTransportManager::ITransportManager::create();
@@ -233,13 +249,13 @@ int main(int argc, char** argv)
     /**********************************/
     /*********** Start HMI ************/
     struct stat sb;
-    if (stat("hmi_link", &sb) == -1)
+    if (stat(SDL_HMI_LINK_FILE, &sb) == -1)
     {
         LOG4CPLUS_INFO(logger, "File with HMI link doesn't exist!");
     } else
     {
         std::ifstream file_str;
-        file_str.open ("hmi_link");
+        file_str.open (SDL_HMI_LINK_FILE);
 
         if (!file_str.is_open())
         {
@@ -287,11 +303,11 @@ int main(int argc, char** argv)
                             dup2(fd_dev0, STDOUT_FILENO);
                             dup2(fd_dev0, STDERR_FILENO);
                         }
-                        execlp("/usr/bin/chromium-browser",
-                              "chromium-browser",
-                              "--auth-schemes=basic,digest,ntlm",
-                              hmi_link.c_str(),
-                              (char *) 0); /* Execute the program */
+                        execlp(SDL_HMI_BROWSER_PATH,
+                               SDL_HMI_BROWSER_ARG0,
+                               SDL_HMI_BROWSER_ARG1,
+                               hmi_link.c_str(),
+                               (char *) 0); /* Execute the program */
                         LOG4CPLUS_WARN(logger, "execl() failed! Install chromium-browser!");
                         return EXIT_SUCCESS;
                     }
