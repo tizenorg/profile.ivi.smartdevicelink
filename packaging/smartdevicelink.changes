@@ -1,3 +1,6 @@
+* Tue Dec 17 2013 Ossama Othman <ossama.othman@intel.com> ivi_oct_m2@f3d53b2
+- [TIVI-2269] Support launching SDL from ICO homescreen.
+
 * Thu Aug 15 2013 Ossama Othman <ossama.othman@intel.com> 14ffb07
 - Override hardcoded paths and filenames.
 - Added missing shared libraries to package.
