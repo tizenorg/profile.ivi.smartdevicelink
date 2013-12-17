@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns="http://tizen.org/ns/packages" package="smartdevicelink" version="0.1.3" install-location="internal-only">
+	<label>smartdevicelink</label>
+	<description>SmartDeviceLink</description>
+	<ui-application appid="smartdevicelink" exec="/usr/bin/smartDeviceLinkCore" nodisplay="false" multiple="false" type="capp" taskmanage="true">
+		<icon>devices.png</icon>
+		<label>SmartDeviceLink</label>
+		<label xml:lang="en-gb">SmartDeviceLink</label>
+		<label xml:lang="en-us">SmartDeviceLink</label>
+	</ui-application>
+</manifest>

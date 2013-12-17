@@ -6,11 +6,13 @@ Group:         Network & Connectivity/Connection Management
 License:       BSD-3-Clause
 URL:           http://projects.genivi.org/smartdevicelink/
 Source:        %{name}-%{version}.tar.gz
+Source1:       %{name}.xml
 Source1001:    %{name}.manifest
 BuildRequires: cmake
 BuildRequires: pkgconfig(bluez)
 BuildRequires: doxygen
 BuildRequires: fdupes
+Requires(post): /usr/bin/pkg_initdb
 
 # For MiniBrowser
 Requires:      webkit2-efl-test
@@ -86,9 +88,18 @@ popd
 # Create the 'hmi_link' file with the location of the sample HMI.
 echo %{_datadir}/%{name}/HMI/index.html > %{buildroot}%{_sysconfdir}/%{name}/hmi_link
 
+# Install Tizen package metadata for smartdevicelink
+mkdir -p %{buildroot}%{_datadir}/packages/
+mkdir -p %{buildroot}%{_datadir}/icons/default/small
+install -m 0644 %{SOURCE1} %{buildroot}%{_datadir}/packages/%{name}.xml
+ln -sf %{_datadir}/%{name}/HMI/images/sdl/devices.png %{buildroot}%{_datadir}/icons/default/small/
+
 %clean
 
 %post -p /sbin/ldconfig
+
+%post sample-hmi
+/usr/bin/pkg_initdb
 
 %postun -p /sbin/ldconfig
 
@@ -103,3 +114,5 @@ echo %{_datadir}/%{name}/HMI/index.html > %{buildroot}%{_sysconfdir}/%{name}/hmi
 %files sample-hmi
 %config %{_sysconfdir}/%{name}/hmi_link
 %{_datadir}/%{name}/HMI/*
+%{_datadir}/packages/%{name}.xml
+%{_datadir}/icons/default/small/*.png
