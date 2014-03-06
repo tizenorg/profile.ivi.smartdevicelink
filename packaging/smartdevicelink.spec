@@ -1,6 +1,6 @@
 Name:          smartdevicelink
 Summary:       GENIVI SmartDeviceLink (SDL)
-Version:       0.1
+Version:       2.0
 Release:       1
 Group:         Network & Connectivity/Connection Management
 License:       BSD-3-Clause
@@ -10,6 +10,11 @@ Source1:       %{name}.xml
 Source1001:    %{name}.manifest
 BuildRequires: cmake
 BuildRequires: pkgconfig(bluez)
+BuildRequires: pkgconfig(gstreamer-1.0)
+BuildRequires: pkgconfig(glib-2.0)
+BuildRequires: pkgconfig(liblog4cxx)
+BuildRequires: pkgconfig(avahi-client)
+BuildRequires: pkgconfig(libpulse-simple)
 BuildRequires: doxygen
 BuildRequires: fdupes
 Requires(post): /usr/bin/pkg_initdb
@@ -62,26 +67,15 @@ mkdir -p %{buildroot}%{_bindir} %{buildroot}%{_libdir}
 mkdir -p %{buildroot}%{_sysconfdir}/%{name} %{buildroot}%{_datadir}/%{name}
 install -m 0755 SDL_Core/src/appMain/smartDeviceLinkCore %{buildroot}%{_bindir}
 
-install -m 0755 SDL_Core/src/components/TransportManager/libTransportManager.so %{buildroot}%{_libdir}
-install -m 0755 SDL_Core/src/components/AppMgr/libAppMgr.so %{buildroot}%{_libdir}
-install -m 0755 SDL_Core/src/components/ConnectionHandler/libconnectionHandler.so %{buildroot}%{_libdir}
-install -m 0755 SDL_Core/src/components/JSONHandler/libJSONHandler.so %{buildroot}%{_libdir}
-install -m 0755 SDL_Core/src/components/ProtocolHandler/libProtocolHandler.so %{buildroot}%{_libdir}
-install -m 0755 SDL_Core/src/components/Utils/libUtils.so %{buildroot}%{_libdir}
 install -m 0755 SDL_Core/src/thirdPartyLibs/encryption/libencryption.so %{buildroot}%{_libdir}
-install -m 0755 SDL_Core/src/thirdPartyLibs/logger/log4cplus-1.1.0/src/liblog4cplus.so.1.1.0 %{buildroot}%{_libdir}
 install -m 0755 SDL_Core/src/thirdPartyLibs/MessageBroker/libMessageBrokerClient.so %{buildroot}%{_libdir}
 install -m 0755 SDL_Core/src/thirdPartyLibs/MessageBroker/libMessageBrokerServer.so %{buildroot}%{_libdir}
 install -m 0755 SDL_Core/src/thirdPartyLibs/MessageBroker/libMessageBroker.so %{buildroot}%{_libdir}
 install -m 0755 SDL_Core/src/thirdPartyLibs/jsoncpp/libjsoncpp.so %{buildroot}%{_libdir}
 
-install -m 0644 SDL_Core/src/appMain/log4cplus.properties %{buildroot}%{_sysconfdir}/%{name}
+install -m 0644 SDL_Core/src/appMain/log4cxx.properties %{buildroot}%{_sysconfdir}/%{name}
 install -m 0644 SDL_Core/src/appMain/audio.8bit.wav %{buildroot}%{_datadir}/%{name}
 cp -R SDL_Core/src/components/HMI %{buildroot}%{_datadir}/%{name}
-
-pushd %{buildroot}%{_libdir}
-ln -s liblog4cplus.so.1.1.0 liblog4cplus.so.0
-popd
 
 %fdupes -s %{buildroot}%{_datadir}/%{name}
 
@@ -108,7 +102,7 @@ ln -sf %{_datadir}/%{name}/HMI/images/sdl/devices.png %{buildroot}%{_datadir}/ic
 %license LICENSE
 %{_bindir}/smartDeviceLinkCore
 %{_libdir}/*.so*
-%config %{_sysconfdir}/%{name}/log4cplus.properties
+%config %{_sysconfdir}/%{name}/log4cxx.properties
 %{_datadir}/%{name}/audio.8bit.wav
 
 %files sample-hmi
