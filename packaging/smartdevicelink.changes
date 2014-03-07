@@ -1,4 +1,5 @@
-* Thu Mar 06 2014 Ossama Othman <ossama.othman@intel.com> f7fd378
+* Thu Mar 06 2014 Ossama Othman <ossama.othman@intel.com> 66d2006
+- Added missing dependencies.
 - Remove executable bit from JavaScript and CSS files.
 - Update to 2.0 release.
 - Removed editor backup files shipped upstream SDL code.
