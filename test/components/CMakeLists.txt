@@ -33,7 +33,7 @@ add_subdirectory(./utils)
 add_subdirectory(./policies)
 
 # -- rpc_base
-add_subdirectory(./rpc_base)
+# add_subdirectory(./rpc_base)
 
 # --- DBus
 IF (${QT_HMI})
