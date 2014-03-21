@@ -28,7 +28,7 @@
                      "LIMITED"
                   ]
               },
-			        "AlertManeuver":{
+               "AlertManeuver":{
                   "hmi_levels":[
                      "BACKGROUND",
                      "FULL",
