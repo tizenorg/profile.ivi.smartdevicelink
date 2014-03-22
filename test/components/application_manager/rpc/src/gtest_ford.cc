@@ -30,61 +30,20 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "gtest/gtest.h"
-#include "gmock/gmock.h"
+#include "rpc/gtest_ford.h"
 
-#include "config_profile/profile.h"
-#include "utils/file_system_tests.h"
-#include "utils/prioritized_queue_tests.h"
-#include "protocol_handler/protocol_handler_tm_test.h"
-#include "application_manager/formatters_commands.h"
-#include "media_manager/media_manager_impl_test.h"
-#include "SmartObjectDraftTest.h"
-#include "SmartObjectInvalidTest.h"
-#include "SmartObjectStressTest.h"
-#include "SmartObjectUnitTest.h"
-#include "TSharedPtrTest.h"
-// #include "jsoncpp/json_reader_test.h"
-
-// #include "json_handler/smart_schema_draft_test.h"
-// #include "SmartObjectConvertionTimeTest.h"
-// #include "request_watchdog/request_watchdog_test.h"
-// #include "json_handler/formatters/formatter_test_helper.h"
-// #include "json_handler/formatters/formatter_json_alrpcv1_test.h"
-// #include "json_handler/formatters/formatter_json_alrpcv2_test.h"
-// #include "json_handler/formatters/formatter_json_rpcv2_test.h"
-
-#include "rpc/admin_app_test.h"
-
-#include "utils/threads/thread_options.h"
-#include "utils/threads/thread.h"
-#include "life_cycle.cc"
-
-#include "hmi_message_handler/hmi_message_handler.h"
-
-// #define QT_HMI
-
-#ifdef __cplusplus
-extern "C" void __gcov_flush();
-#endif
-
-int main(int argc, char **argv) {
-  ::testing::InitGoogleMock(&argc, argv);
-
-  profile::Profile::instance()->config_file_name("smartDeviceLink.ini");
-  log4cxx::PropertyConfigurator::configure("log4cxx.properties");
-  test::AdminAppTest app;
-
-  app.Run();
-  sleep(5);
-
-  int result = RUN_ALL_TESTS();
-
-#ifdef __cplusplus
-  __gcov_flush();
-#endif
-
-  return result;
+GTestFord::GTestFord() {
 }
 
+GTestFord::~GTestFord() {
+}
 
+int GTestFord::index_ = 0;
+
+void GTestFord::TestBody() {
+  GMockClassContainer* container = GMockClassContainer::instance();
+
+  EXPECT_EQ((container->GetTest(index_))->Check(), true);
+
+  index_++;
+}
