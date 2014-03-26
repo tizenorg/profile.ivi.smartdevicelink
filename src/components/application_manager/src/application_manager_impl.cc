@@ -1668,4 +1668,8 @@ mobile_apis::Result::eType ApplicationManagerImpl::SaveBinary(
   return mobile_apis::Result::SUCCESS;
 }
 
+bool ApplicationManagerImpl::IsHMICooperating() const {
+  return hmi_cooperating_;
+}
+
 }  // namespace application_manager
