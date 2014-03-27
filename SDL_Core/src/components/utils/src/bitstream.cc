@@ -120,8 +120,13 @@ void Extract(BitStream* bs, std::vector<uint8_t>* data, size_t length) {
       return;
     }
     data->resize(length);
-    void* dataptr = &data->front();
-    bs->ExtractBytes(dataptr, length);
+    
+    // Don't call vector::front() on an empty vector (it's undefined)
+    if (length != 0)
+    {
+      void* dataptr = &data->front();
+      bs->ExtractBytes(dataptr, length);
+    }
   }
 }
 
