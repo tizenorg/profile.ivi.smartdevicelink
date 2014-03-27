@@ -57,7 +57,8 @@ SDL.SDLController = Em.Object
                 return 'MENU';
             }
             if (SDL.States.info.nonMedia.active
-                || SDL.States.media.sdlmedia.active) {
+                || SDL.States.media.sdlmedia.active
+                || SDL.States.navigationApp.baseNavigation.active) {
 
                 return 'MAIN';
             } else {
@@ -69,6 +70,7 @@ SDL.SDLController = Em.Object
             'SDL.AlertPopUp.active',
             'SDL.States.info.nonMedia.active',
             'SDL.States.media.sdlmedia.active',
+            'SDL.States.navigationApp.baseNavigation.active',
             'SDL.ScrollableMessage.active',
             'SDL.InteractionChoicesView.active',
             'SDL.VRHelpListView.active',
@@ -164,21 +166,21 @@ SDL.SDLController = Em.Object
          */
         showVRHelpItems: function() {
 
-            if (SDL.SDLAppController.model) {
-                if (SDL.SDLModel.VRActive && SDL.SDLModel.interactionData.vrHelp) {
-
-                    SDL.SDLModel.ShowVrHelp(SDL.SDLModel.interactionData.vrHelpTitle, SDL.SDLModel.interactionData.vrHelp);
-                } else if (SDL.SDLModel.VRActive && !SDL.SDLModel.interactionData.vrHelp && SDL.SDLAppController.model.globalProperties.vrHelp) {
-
-                    if (SDL.SDLAppController.model) {
-                        SDL.SDLModel.ShowVrHelp(SDL.SDLAppController.model.globalProperties.vrHelpTitle, SDL.SDLAppController.model.globalProperties.vrHelp );
-                    }
-                } else {
-                    if (SDL.VRHelpListView.active) {
-                        SDL.VRHelpListView.deactivate();
-                    }
-                }
-            }
+//            if (SDL.SDLAppController.model) {
+//                if (SDL.SDLModel.VRActive && SDL.SDLModel.interactionData.vrHelp) {
+//
+//                    SDL.SDLModel.ShowVrHelp(SDL.SDLModel.interactionData.vrHelpTitle, SDL.SDLModel.interactionData.vrHelp);
+//                } else if (SDL.SDLModel.VRActive && !SDL.SDLModel.interactionData.vrHelp && SDL.SDLAppController.model.globalProperties.vrHelp) {
+//
+//                    if (SDL.SDLAppController.model) {
+//                        SDL.SDLModel.ShowVrHelp(SDL.SDLAppController.model.globalProperties.vrHelpTitle, SDL.SDLAppController.model.globalProperties.vrHelp );
+//                    }
+//                } else {
+//                    if (SDL.VRHelpListView.active) {
+//                        SDL.VRHelpListView.deactivate();
+//                    }
+//                }
+//            }
         }.observes('SDL.SDLModel.VRActive', 'SDL.SDLModel.interactionData.vrHelp'),
 
         /**
