@@ -98,7 +98,9 @@ class LifeCycle : public utils::Singleton<LifeCycle> {
     System::Thread* dbus_adapter_thread_;
 #endif  // QT_HMI
 
+#   ifdef ENABLE_LOG
     static log4cxx::LoggerPtr logger_;
+#   endif // ENABLE_LOG
 
     DISALLOW_COPY_AND_ASSIGN(LifeCycle);
 
