@@ -60,6 +60,8 @@ include_directories (
   ../config_profile/include/
   ../../thirdPartyLibs/jsoncpp/include/
   ${CMAKE_BINARY_DIR}/src/components/
+  ${CMAKE_SOURCE_DIR}/src/components/policy/src/policy/include/
+  ${CMAKE_SOURCE_DIR}/src/components/policy/src/policy/usage_statistics/include/
   ${default_includes}
 )
 
@@ -73,7 +75,3 @@ set (SOURCES
 
 add_library("MediaManager" ${SOURCES} ${default_sources})
 target_link_libraries("MediaManager" ${LIBRARIES})
-
-if( BUILD_SHARED_LIBS )
-  install (FILES ${CMAKE_CURRENT_BINARY_DIR}/libMediaManager.so DESTINATION lib)
-endif()
