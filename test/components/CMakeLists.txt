@@ -29,6 +29,9 @@ add_subdirectory(./utils)
 # --- Audio Manager
 #add_subdirectory(./media_manager)
 
+# --- policies (Policy Manager)
+add_subdirectory(./policies)
+
 # -- rpc_base
 add_subdirectory(./rpc_base)
 

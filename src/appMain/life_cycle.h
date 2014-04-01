@@ -48,6 +48,7 @@
 #include "transport_manager/transport_manager.h"
 #include "transport_manager/transport_manager_default.h"
 #include "media_manager/media_manager_impl.h"
+#include "policies/policy_manager_impl.h"
 #include "utils/singleton.h"
 
 #ifdef WEB_HMI
@@ -84,6 +85,7 @@ class LifeCycle : public utils::Singleton<LifeCycle> {
     hmi_message_handler::MessageBrokerAdapter* mb_adapter_;
 #endif  // WEB_HMI
     media_manager::MediaManagerImpl* media_manager_;
+    policies::PolicyManagerImpl* policy_manager_;
 
 #ifdef WEB_HMI
     NsMessageBroker::CMessageBroker* message_broker_;
