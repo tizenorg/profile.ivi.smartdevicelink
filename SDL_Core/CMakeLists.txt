@@ -101,6 +101,10 @@ add_definitions(-DOS_POSIX)
 IF(CMAKE_C_FLAGS_DEBUG)
     SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDEBUG" )
     add_definitions(-DDEBUG)
+
+    # Enable debug mode in the GNU C++ library, to catch incorrect/undefined behavior
+    add_definitions(-D_GLIBCXX_DEBUG)
+    add_definitions(-D_GLIBCXX_DEBUG_PEDANTIC)
 ELSE (CMAKE_C_FLAGS_DEBUG)
     SET( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DRELEASE" )
     add_definitions(-DRELEASE)
