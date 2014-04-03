@@ -951,6 +951,10 @@ smart_objects::SmartObject* MessageHelper::CreateChangeRegistration(
 }
 
 void MessageHelper::SendChangeRegistrationRequestToHMI(ApplicationConstSharedPtr app) {
+  if (!app.valid()) {
+    return;
+  }
+
   hmi_apis::Common_Language::eType app_common_language =
     ToCommonLanguage(app->language());
   const HMICapabilities& hmi_capabilities =
