@@ -36,6 +36,7 @@
 #include <map>
 #include <set>
 #include <vector>
+
 #include "application_manager/application_data_impl.h"
 #include "application_manager/usage_statistics.h"
 #include "connection_handler/device.h"
@@ -135,7 +136,8 @@ class ApplicationImpl : public virtual InitialApplicationDataImpl,
    */
   virtual uint32_t UpdateHash();
 
-  ApplicationUsageReport& usage_report();
+  UsageStatistics& usage_report();
+
  protected:
   void CleanupFiles();
 
@@ -169,7 +171,7 @@ class ApplicationImpl : public virtual InitialApplicationDataImpl,
   AppFilesMap app_files_;
   std::set<mobile_apis::ButtonName::eType> subscribed_buttons_;
   std::set<uint32_t> subscribed_vehicle_info_;
-  ApplicationUsageReport usage_report_;
+  UsageStatistics usage_report_;
   DISALLOW_COPY_AND_ASSIGN(ApplicationImpl);
 };
 
