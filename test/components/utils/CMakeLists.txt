@@ -3,7 +3,6 @@ include_directories (
   ../../../src/thirdPartyLibs/gmock-1.6.0/gtest/include
   ../../../src/components/utils/include
   ../../../test/components/utils/include
-  ${CMAKE_BINARY_DIR}/src/components/
 )
 
 set(LIBRARIES
