@@ -80,8 +80,7 @@ PolicyManager* PolicyHandler::LoadPolicyLibrary(const std::string& path) {
     policy_manager_ = CreateManager();
     policy_manager_->set_listener(this);
 #if defined (EXTENDED_POLICY)
-    //exchange_handler_ = new PTExchangeHandlerImpl(this);
-    exchange_handler_ = new PTExchangeHandlerExt(this);
+    exchange_handler_ = new PTExchangeHandlerImpl(this);
 #else
     exchange_handler_ = new PTExchangeHandlerImpl(this);
 #endif
@@ -298,43 +297,6 @@ void PolicyHandler::OnUpdateStatusChanged(PolicyTableStatus status) {
     ConvertUpdateStatus(status));
 }
 
-void PolicyHandler::OnCurrentDeviceIdUpdateRequired(
-  const std::string& policy_app_id) {
-  LOG4CXX_INFO(logger_, "OnCurrentDeviceIdUpdateRequired");
-  // TODO(AOleynik): Get registered device info from SDL
-  application_manager::ApplicationSharedPtr app =
-    application_manager::ApplicationManagerImpl::instance()
-    ->application_by_policy_id(policy_app_id);
-
-  if (!app.valid()) {
-    LOG4CXX_WARN(logger_, "Application with id '" << policy_app_id << "' "
-                 "not found within registered applications.");
-    policy_manager_->UpdateCurrentDeviceId(std::string());
-    return;
-  }
-  DeviceParams device_param;
-  application_manager::MessageHelper::GetDeviceInfoForApp(app->app_id(),
-      &device_param);
-  policy_manager_->UpdateCurrentDeviceId(device_param.device_mac_address);
-}
-
-void PolicyHandler::OnSystemInfoChanged(const std::string& language) {
-  LOG4CXX_INFO(logger_, "OnSystemInfoChanged");
-  policy_manager_->SetSystemLanguage(language);
-}
-
-void PolicyHandler::OnGetSystemInfo(const std::string& ccpu_version,
-                                    const std::string& wers_country_code,
-                                    const std::string& language) {
-  LOG4CXX_INFO(logger_, "OnGetSystemInfo");
-  policy_manager_->SetSystemInfo(ccpu_version, wers_country_code, language);
-}
-
-void PolicyHandler::OnSystemInfoUpdateRequired() {
-  LOG4CXX_INFO(logger_, "OnSystemInfoUpdateRequired");
-  application_manager::MessageHelper::SendGetSystemInfoRequest();
-}
-
 void PolicyHandler::OnAppRevoked(const std::string& policy_app_id) {
   LOG4CXX_INFO(logger_, "OnAppRevoked");
   if (!policy_manager_) {
@@ -401,17 +363,10 @@ bool PolicyHandler::SendMessageToSDK(const BinaryMessage& pt_string) {
   std::string url;
   uint32_t app_id = last_used_app_ids_.back();
   if (policy_manager_) {
-    application_manager::ApplicationSharedPtr app =
-      application_manager::ApplicationManagerImpl::instance()
-      ->application(app_id);
-
-    if (!app.valid()) {
-      LOG4CXX_WARN(logger_, "There is no registered application with "
-                   "connection key '" << app_id << "'");
-      return false;
-    }
-
-    url = policy_manager_->GetUpdateUrl(PolicyServiceTypes::POLICY);
+    const std::string& mobile_app_id =
+      application_manager::ApplicationManagerImpl::instance()->application(
+        app_id)->mobile_app_id()->asString();
+    url = policy_manager_->GetUpdateUrl(mobile_app_id);
   }
   LOG4CXX_INFO(
     logger_,
@@ -445,6 +400,8 @@ bool PolicyHandler::ReceiveMessageFromSDK(const BinaryMessage& pt_string) {
     event_observer_.get()->subscribe_on_event(
       hmi_apis::FunctionID::VehicleInfo_GetVehicleData, correlation_id);
     application_manager::MessageHelper::CreateGetDeviceData(correlation_id);
+    // TODO(KKolodiy): when we must reset counter of ignition cyles, update days
+    // and kms?
   }
   return ret;
 }
@@ -489,6 +446,9 @@ void PolicyHandler::StartPTExchange(bool skip_device_selection) {
         break;
     }
   }
+
+  // TODO(KKolodiy): when we must reset counter of ignition cyles,
+  // update days and kms?
 
   retry_sequence_lock_.Ackquire();
   retry_sequence_.stop();
@@ -580,12 +540,6 @@ void PolicyHandler::OnActivateApp(uint32_t connection_key,
   permissions.isSDLAllowed = true;
 #endif
 
-  if (permissions.isSDLAllowed &&
-      PolicyTableStatus::StatusUpdateRequired == policy_manager_->GetPolicyTableStatus()) {
-    printf("\n\t\t\t\t\tUpdate is requried\n");
-    StartPTExchange();
-  }
-
   application_manager::MessageHelper::SendActivateAppResponse(permissions,
       correlation_id);
   policy_manager_->RemovePendingPermissionChanges(policy_app_id);
@@ -623,17 +577,6 @@ void PolicyHandler::PTExchangeAtOdometer(int kilometers) {
     LOG4CXX_INFO(logger_, "Enough kilometers passed to send for PT update.");
     StartPTExchange();
   }
-}
-
-void PolicyHandler::PTExchangeAtUserRequest(uint32_t correlation_id) {
-  LOG4CXX_TRACE(logger_, "PT exchange at user request");
-  policy::PolicyTableStatus status = policy_manager_->GetPolicyTableStatus();
-  if (status == policy::StatusUpdateRequired) {
-    OnPTExchangeNeeded();
-    status = policy::StatusUpdatePending;
-  }
-  application_manager::MessageHelper::SendUpdateSDLResponse(
-    ConvertUpdateStatus(status), correlation_id);
 }
 
 void PolicyHandler::OnPTExchangeNeeded() {
