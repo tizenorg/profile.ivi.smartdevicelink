@@ -50,7 +50,7 @@
 #include "utils/signals.h"
 #include "config_profile/profile.h"
 
-#if defined(EXTENDED_MEDIA)
+#if defined(EXTENDED_MEDIA_MODE)
 #include <gst/gst.h>
 #endif
 
@@ -67,7 +67,7 @@ const char kBrowser[] = "/usr/bin/chromium-browser";
 const char kBrowserName[] = "chromium-browser";
 const char kBrowserParams[] = "--auth-schemes=basic,digest,ntlm";
 const char kLocalHostAddress[] = "127.0.0.1";
-const char kApplicationVersion[] = "SDL_RB_B3.2";
+const char kApplicationVersion[] = "SDL_RB_3.3";
 
 #ifdef __QNX__
 bool Execute(std::string command, const char * const *) {
@@ -163,31 +163,11 @@ if (stat(hmi_link.c_str(), &sb) == -1) {
   return false;
 }
 
-#ifdef OS_MACOSX
-  // On Mac, use system() to call osascript to start Chrome
-  const char kCommand[] = "osascript -e 'tell application \"Google Chrome\" to open \"%s\"'";
-  char *cmd;
-
-  asprintf(&cmd, kCommand, hmi_link.c_str());
-
-  int ret = system(cmd);
-
-  free(cmd);
-
-  if (ret != 0)
-    LOG4CXX_ERROR(logger, "Error launching HTML5 HMI: is Google Chrome installed?");
-
-  return (ret ? false : true);
-#elif OS_LINUX
-	// On Linux, use Execute() to start the browser
   std::string kBin = kBrowser;
   const char* const kParams[4] = {kBrowserName, kBrowserParams,
       hmi_link.c_str(), NULL};
 
   return Execute(kBin, kParams);
-#else
-#error "Add a way to launch the web HMI on your platform"
-#endif
 }
 #endif  // WEB_HMI
 
@@ -209,6 +189,7 @@ bool InitHmi() {
   return Execute(kStartHmi, NULL);
 }
 #endif  // QT_HMI
+
 }
 
 /**
@@ -259,6 +240,7 @@ int32_t main(int32_t argc, char** argv) {
         std::string(kLocalHostAddress)) {
       LOG4CXX_INFO(logger, "Start HMI on localhost");
 
+#ifndef NO_HMI
       if (!InitHmi()) {
         main_namespace::LifeCycle::instance()->StopComponents();
 // without this line log4cxx threads continue using some instances destroyed by exit()
@@ -266,6 +248,7 @@ int32_t main(int32_t argc, char** argv) {
         exit(EXIT_FAILURE);
       }
       LOG4CXX_INFO(logger, "InitHmi successful");
+#endif // #ifndef NO_HMI
     }
   }
   // --------------------------------------------------------------------------
