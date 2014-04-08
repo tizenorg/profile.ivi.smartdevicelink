@@ -320,7 +320,9 @@ if (notification.method == this.onSystemErrorNotification) {
 
             if (notification.method == this.onStatusUpdateNotification) {
 
-                SDL.PopUp.popupActivate(notification.status);
+                //SDL.PopUp.popupActivate(notification.status);
+
+                SDL.TTSPopUp.ActivateTTS(notification.params.status);
             }
 
             if (notification.method == this.onAppPermissionChangedNotification) {
