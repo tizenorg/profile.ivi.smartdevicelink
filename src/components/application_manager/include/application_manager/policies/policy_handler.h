@@ -190,8 +190,11 @@ class PolicyHandler : public utils::Singleton<PolicyHandler>,
    */
   void OnSystemError(int code);
 
-  void OnCurrentDeviceIdUpdateRequired(
-      const std::string& policy_app_id) {}
+  /**
+   * @brief Choose application id to be used for snapshot sending
+   * @return Application id or 0, if there are no applications registered
+   */
+  uint32_t GetAppIdForSending();
 
  protected:
   /**
@@ -211,12 +214,6 @@ class PolicyHandler : public utils::Singleton<PolicyHandler>,
     void StartPTExchange(bool skip_device_selection = false);
 
  private:
-  /**
-   * @brief Choose application id to be used for snapshot sending
-   * @return Application id or 0, if there are no applications registered
-   */
-  uint32_t GetAppIdForSending();
-
   /**
    * @brief Choose device according to app HMI status and user consent for
    * device
