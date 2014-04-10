@@ -411,12 +411,6 @@ bool PolicyHandler::SendMessageToSDK(const BinaryMessage& pt_string) {
       return false;
     }
 
-    const std::string& mobile_app_id = app->mobile_app_id()->asString();
-    if (!mobile_app_id.empty()) {
-      LOG4CXX_WARN(logger_, "Application with connection key '" << app_id << "'"
-                   " has no application id.");
-      return false;
-    }
     url = policy_manager_->GetUpdateUrl(PolicyServiceTypes::POLICY);
   }
   LOG4CXX_INFO(
@@ -584,7 +578,7 @@ void PolicyHandler::OnActivateApp(uint32_t connection_key,
   }
 #else
   permissions.isSDLAllowed = true;
-#endif  
+#endif
 
   if (permissions.isSDLAllowed &&
       PolicyTableStatus::StatusUpdateRequired == policy_manager_->GetPolicyTableStatus()) {
@@ -639,7 +633,7 @@ void PolicyHandler::PTExchangeAtUserRequest(uint32_t correlation_id) {
     status = policy::StatusUpdatePending;
   }
   application_manager::MessageHelper::SendUpdateSDLResponse(
-        ConvertUpdateStatus(status), correlation_id);
+    ConvertUpdateStatus(status), correlation_id);
 }
 
 void PolicyHandler::OnPTExchangeNeeded() {
