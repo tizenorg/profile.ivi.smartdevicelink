@@ -78,7 +78,8 @@ TransportManagerImpl::TransportManagerImpl()
       event_queue_thread_(),
       device_listener_thread_wakeup_(),
       is_initialized_(false),
-      connection_id_counter_(0) {
+      connection_id_counter_(0),
+      metric_observer_(NULL) {
   LOG4CXX_INFO(logger_, "==============================================");
 #ifdef USE_RWLOCK
   pthread_rwlock_init(&message_queue_rwlock_, NULL);
@@ -316,7 +317,9 @@ int TransportManagerImpl::AddTransportAdapter(
       transport_adapter->Init() == TransportAdapter::OK) {
     transport_adapters_.push_back(transport_adapter);
   }
-
+  if (metric_observer_) {
+    transport_adapter->SetTimeMetricObserver(metric_observer_);
+  }
   return E_SUCCESS;
 }
 
@@ -509,6 +512,7 @@ void TransportManagerImpl::PostEvent(const TransportAdapterEvent& event) {
 #else
   pthread_mutex_lock(&event_queue_mutex_);
 #endif
+  RawMessageSptr data = event.data();
   event_queue_.push_back(event);
   pthread_cond_signal(&device_listener_thread_wakeup_);
 #ifdef USE_RWLOCK
@@ -596,7 +600,6 @@ void TransportManagerImpl::EventListenerThread(void) {
       DeviceHandle device_handle;
       BaseError* error = current->event_error();
       RawMessageSptr data = current->data();
-
       int event_type = current->event_type();
       event_queue_.erase(current);
 #ifdef USE_RWLOCK
@@ -713,6 +716,9 @@ void TransportManagerImpl::EventListenerThread(void) {
             break;
           }
           data->set_connection_key(connection->id);
+          if (metric_observer_) {
+            metric_observer_->StopRawMsg(data.get());
+          }
           RaiseEvent(&TransportManagerListener::OnTMMessageReceived, data);
           break;
         }
@@ -764,6 +770,10 @@ void TransportManagerImpl::EventListenerThread(void) {
   pthread_mutex_unlock(&event_queue_mutex_);
 
   LOG4CXX_INFO(logger_, "Event listener thread finished");
+}
+
+void TransportManagerImpl::SetTimeMetricObserver(TMMetricObserver* observer) {
+  metric_observer_ = observer;
 }
 void* TransportManagerImpl::MessageQueueStartThread(void* data) {
   if (NULL != data) {
