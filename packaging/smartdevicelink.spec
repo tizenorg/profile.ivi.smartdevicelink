@@ -20,9 +20,6 @@ BuildRequires: fdupes
 Requires:      avahi-libs
 Requires(post): /usr/bin/pkg_initdb
 
-# For MiniBrowser
-Requires:      webkit2-efl-test
-
 # Custom SDL-enabled HMIs should "Provide" this virtual package.
 Requires:      smartdevicelink-hmi
 
