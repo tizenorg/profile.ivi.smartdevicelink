@@ -19,6 +19,7 @@ include_directories (
 IF (${QT_HMI})
     set (DBUS_SOURCE ./src/dbus_message_adapter.cc)
     set (DBUS_ADAPTER DBus)
+    set (MESSAGE_BROKER MessageBrokerClient MessageBrokerServer)
 ENDIF (${QT_HMI})
 
 set (SOURCES
@@ -31,6 +32,7 @@ set (SOURCES
 set (LIBRARIES
     log4cxx
     ${DBUS_ADAPTER}
+    ${MESSAGE_BROKER}
 )
 
 add_library("HMIMessageHandler" ${SOURCES})
