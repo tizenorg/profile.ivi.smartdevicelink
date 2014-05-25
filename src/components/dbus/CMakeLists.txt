@@ -40,3 +40,7 @@ add_custom_command(
 
 add_library("DBus" ${SOURCES})
 target_link_libraries("DBus" "${LIBRARIES}")
+
+if( BUILD_SHARED_LIBS )
+  install (FILES ${CMAKE_CURRENT_BINARY_DIR}/libDBus.so DESTINATION lib)
+endif()
