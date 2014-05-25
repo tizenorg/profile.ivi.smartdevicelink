@@ -73,3 +73,7 @@ set (SOURCES
 
 add_library("MediaManager" ${SOURCES} ${default_sources})
 target_link_libraries("MediaManager" ${LIBRARIES})
+
+if( BUILD_SHARED_LIBS )
+  install (FILES ${CMAKE_CURRENT_BINARY_DIR}/libMediaManager.so DESTINATION lib)
+endif()

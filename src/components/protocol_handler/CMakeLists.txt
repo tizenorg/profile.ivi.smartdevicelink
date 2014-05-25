@@ -18,3 +18,7 @@ set (SOURCES
 )
 
 add_library("ProtocolHandler" ${SOURCES})
+
+if( BUILD_SHARED_LIBS )
+  install (FILES ${CMAKE_CURRENT_BINARY_DIR}/libProtocolHandler.so DESTINATION lib)
+endif()

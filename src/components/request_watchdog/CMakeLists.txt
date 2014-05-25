@@ -13,3 +13,7 @@ set (SOURCES
 
 add_library("RequestWatchdog" ${SOURCES})
 target_link_libraries ("RequestWatchdog" Utils)
+
+if( BUILD_SHARED_LIBS )
+  install (FILES ${CMAKE_CURRENT_BINARY_DIR}/libRequestWatchdog.so DESTINATION lib)
+endif()

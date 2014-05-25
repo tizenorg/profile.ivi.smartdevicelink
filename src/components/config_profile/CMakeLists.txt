@@ -12,3 +12,7 @@ set (SOURCES
 
 add_library("ConfigProfile" ${SOURCES})
 target_link_libraries ("ConfigProfile" Utils)
+
+if( BUILD_SHARED_LIBS )
+  install (FILES ${CMAKE_CURRENT_BINARY_DIR}/libConfigProfile.so DESTINATION lib)
+endif()

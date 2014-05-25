@@ -9,3 +9,7 @@ set (SOURCES
 )
 
 add_library("Resumption" ${SOURCES})
+
+if( BUILD_SHARED_LIBS )
+  install (FILES ${CMAKE_CURRENT_BINARY_DIR}/libResumption.so DESTINATION lib)
+endif()

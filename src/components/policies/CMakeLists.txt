@@ -20,3 +20,7 @@ set (SOURCES
 
 add_library("policies" ${SOURCES})
 target_link_libraries ("policies" formatters jsoncpp SmartObjects)
+
+if( BUILD_SHARED_LIBS )
+  install (FILES ${CMAKE_CURRENT_BINARY_DIR}/libpolicies.so DESTINATION lib)
+endif()

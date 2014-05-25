@@ -79,3 +79,7 @@ target_link_libraries ("TransportManager" log4cxx)
 if (BUILD_BT_SUPPORT)
   target_link_libraries("TransportManager" bluetooth)
 endif()
+
+if( BUILD_SHARED_LIBS )
+  install (FILES ${CMAKE_CURRENT_BINARY_DIR}/libTransportManager.so DESTINATION lib)
+endif()

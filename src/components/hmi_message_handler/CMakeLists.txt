@@ -35,3 +35,7 @@ set (LIBRARIES
 
 add_library("HMIMessageHandler" ${SOURCES})
 target_link_libraries ("HMIMessageHandler" ${LIBRARIES})
+
+if( BUILD_SHARED_LIBS )
+  install (FILES ${CMAKE_CURRENT_BINARY_DIR}/libHMIMessageHandler.so DESTINATION lib)
+endif()
