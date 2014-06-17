@@ -22,3 +22,7 @@ add_library("Libusb-1.0.16" ${LIBUSB_SOURCES})
 
 
 target_link_libraries("Libusb-1.0.16" udev)
+
+if( BUILD_SHARED_LIBS )
+  install (FILES ${CMAKE_CURRENT_BINARY_DIR}/libLibusb-1.0.16.so DESTINATION lib)
+endif()
