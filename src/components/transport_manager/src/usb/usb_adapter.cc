@@ -30,40 +30,48 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "transport_manager/transport_manager_default.h"
-#include "transport_manager/tcp/tcp_transport_adapter.h"
-
-#ifdef BLUETOOTH_SUPPORT
-#include "transport_manager/bluetooth/bluetooth_transport_adapter.h"
-#endif
-
-#ifdef USB_SUPPORT
 #include "transport_manager/usb/usb_adapter.h"
-#endif
-
+#include "transport_manager/usb/usb_device_scanner.h"
+#include "transport_manager/usb/usb_connection_factory.h"
+#include "transport_manager/usb/common.h"
 
 namespace transport_manager {
+namespace transport_adapter {
 
-int TransportManagerDefault::Init() {
-  if (E_SUCCESS != TransportManagerImpl::Init()) {
-    return E_TM_IS_NOT_INITIALIZED;
-  }
-
-#ifdef BLUETOOTH_SUPPORT
-  AddTransportAdapter(new transport_adapter::BluetoothTransportAdapter);
-#endif
-  const uint16_t kTcpAdapterPort = 12345;
-  AddTransportAdapter(new transport_adapter::TcpTransportAdapter(kTcpAdapterPort));
-#ifdef USB_SUPPORT
-  AddTransportAdapter(new transport_adapter::UsbAdapter);
-#endif
-
-  return E_SUCCESS;
+UsbAdapter::UsbAdapter()
+    : TransportAdapterImpl(new UsbDeviceScanner(this),
+                           new UsbConnectionFactory(this), 0),
+      is_initialised_(false),
+      usb_handler_(new UsbHandler()) {
+  static_cast<UsbDeviceScanner*>(device_scanner_)->SetUsbHandler(usb_handler_);
+  static_cast<UsbConnectionFactory*>(server_connection_factory_)
+      ->SetUsbHandler(usb_handler_);
 }
 
-TransportManagerDefault::~TransportManagerDefault() {}
+UsbAdapter::~UsbAdapter() {}
 
-TransportManagerDefault::TransportManagerDefault()
-    : TransportManagerImpl() {}
+DeviceType UsbAdapter::GetDeviceType() const { return "sdl-usb-aoa"; }
 
-}  //  namespace transport_manager
+bool UsbAdapter::IsInitialised() const {
+  return is_initialised_ && TransportAdapterImpl::IsInitialised();
+}
+
+TransportAdapter::Error UsbAdapter::Init() {
+  TransportAdapter::Error error = usb_handler_->Init();
+  if (error != TransportAdapter::OK) {
+    return error;
+  }
+  error = TransportAdapterImpl::Init();
+  if (error != TransportAdapter::OK) {
+    return error;
+  }
+  is_initialised_ = true;
+  return TransportAdapter::OK;
+}
+
+bool UsbAdapter::ToBeAutoConnected(DeviceSptr device) const {
+  return true;
+}
+
+}  // namespace transport_adapter
+}  // namespace transport_manager

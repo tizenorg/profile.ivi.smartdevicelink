@@ -30,40 +30,32 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "transport_manager/transport_manager_default.h"
-#include "transport_manager/tcp/tcp_transport_adapter.h"
+#ifndef SRC_COMPONENTS_TRANSPORT_MANAGER_INCLUDE_TRANSPORT_MANAGER_USB_USB_ADAPTER_H_
+#define SRC_COMPONENTS_TRANSPORT_MANAGER_INCLUDE_TRANSPORT_MANAGER_USB_USB_ADAPTER_H_
 
-#ifdef BLUETOOTH_SUPPORT
-#include "transport_manager/bluetooth/bluetooth_transport_adapter.h"
-#endif
-
-#ifdef USB_SUPPORT
-#include "transport_manager/usb/usb_adapter.h"
-#endif
-
+#include "transport_manager/transport_adapter/transport_adapter_impl.h"
+#include "transport_manager/usb/common.h"
 
 namespace transport_manager {
+namespace transport_adapter {
 
-int TransportManagerDefault::Init() {
-  if (E_SUCCESS != TransportManagerImpl::Init()) {
-    return E_TM_IS_NOT_INITIALIZED;
-  }
+class UsbAdapter : public TransportAdapterImpl {
+ public:
+  UsbAdapter();
+  virtual ~UsbAdapter();
 
-#ifdef BLUETOOTH_SUPPORT
-  AddTransportAdapter(new transport_adapter::BluetoothTransportAdapter);
-#endif
-  const uint16_t kTcpAdapterPort = 12345;
-  AddTransportAdapter(new transport_adapter::TcpTransportAdapter(kTcpAdapterPort));
-#ifdef USB_SUPPORT
-  AddTransportAdapter(new transport_adapter::UsbAdapter);
-#endif
+ protected:
+  virtual DeviceType GetDeviceType() const;
+  virtual bool IsInitialised() const;
+  virtual TransportAdapter::Error Init();
+  virtual bool ToBeAutoConnected(DeviceSptr device) const;
 
-  return E_SUCCESS;
-}
+ private:
+  bool is_initialised_;
+  UsbHandlerSptr usb_handler_;
+};
 
-TransportManagerDefault::~TransportManagerDefault() {}
+}  // namespace transport_adapter
+}  // namespace transport_manager
 
-TransportManagerDefault::TransportManagerDefault()
-    : TransportManagerImpl() {}
-
-}  //  namespace transport_manager
+#endif  // SRC_COMPONENTS_TRANSPORT_MANAGER_INCLUDE_TRANSPORT_MANAGER_USB_USB_AOA_ADAPTER
