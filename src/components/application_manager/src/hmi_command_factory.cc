@@ -46,13 +46,6 @@
 #include "application_manager/commands/hmi/allow_all_apps_response.h"
 #include "application_manager/commands/hmi/allow_app_request.h"
 #include "application_manager/commands/hmi/allow_app_response.h"
-#include "application_manager/commands/hmi/sdl_get_list_of_permissions_request.h"
-#include "application_manager/commands/hmi/sdl_get_list_of_permissions_response.h"
-#include "application_manager/commands/hmi/sdl_get_user_friendly_message_request.h"
-#include "application_manager/commands/hmi/sdl_get_user_friendly_message_response.h"
-#include "application_manager/commands/hmi/sdl_get_status_update_request.h"
-#include "application_manager/commands/hmi/sdl_get_status_update_response.h"
-#include "application_manager/commands/hmi/on_status_update_notification.h"
 #include "application_manager/commands/hmi/update_sdl_request.h"
 #include "application_manager/commands/hmi/update_sdl_response.h"
 #include "application_manager/commands/hmi/activate_app_request.h"
@@ -139,8 +132,8 @@
 #include "application_manager/commands/hmi/tts_set_global_properties_response.h"
 #include "application_manager/commands/hmi/tts_get_capabilities_request.h"
 #include "application_manager/commands/hmi/tts_get_capabilities_response.h"
-#include "application_manager/commands/hmi/tts_perform_interaction_request.h"
-#include "application_manager/commands/hmi/tts_perform_interaction_response.h"
+#include "application_manager/commands/hmi/vr_perform_interaction_request.h"
+#include "application_manager/commands/hmi/vr_perform_interaction_response.h"
 #include "application_manager/commands/hmi/vi_is_ready_request.h"
 #include "application_manager/commands/hmi/vi_is_ready_response.h"
 #include "application_manager/commands/hmi/vi_read_did_request.h"
@@ -241,8 +234,8 @@
 #include "application_manager/commands/hmi/ui_set_display_layout_response.h"
 #include "application_manager/commands/hmi/on_sdl_close_notification.h"
 #include "application_manager/commands/hmi/on_record_start_notification.h"
-#include "application_manager/commands/hmi/add_statistics_info_notification.h"
-#include "application_manager/commands/hmi/on_system_error_notification.h"
+#include "application_manager/commands/hmi/basic_communication_system_request.h"
+#include "application_manager/commands/hmi/basic_communication_system_response.h"
 
 namespace application_manager {
 
@@ -301,34 +294,6 @@ CommandSharedPtr HMICommandFactory::CreateCommand(
       } else {
         command.reset(new commands::SDLActivateAppRequest(message));
       }
-      break;
-    }
-    case hmi_apis::FunctionID::SDL_GetListOfPermissions: {
-      if (is_response) {
-        command.reset(new commands::SDLGetListOfPermissionsResponse(message));
-      } else {
-        command.reset(new commands::SDLGetListOfPermissionsRequest(message));
-      }
-      break;
-    }
-    case hmi_apis::FunctionID::SDL_GetUserFriendlyMessage: {
-      if (is_response) {
-        command.reset(new commands::SDLGetUserFriendlyMessageResponse(message));
-      } else {
-        command.reset(new commands::SDLGetUserFriendlyMessageRequest(message));
-      }
-      break;
-    }
-    case hmi_apis::FunctionID::SDL_GetStatusUpdate: {
-      if (is_response) {
-        command.reset(new commands::SDLGetStatusUpdateResponse(message));
-      } else {
-        command.reset(new commands::SDLGetStatusUpdateRequest(message));
-      }
-      break;
-    }
-    case hmi_apis::FunctionID::SDL_OnStatusUpdate: {
-      command.reset(new commands::OnStatusUpdateNotification(message));
       break;
     }
     case hmi_apis::FunctionID::BasicCommunication_MixingAudioSupported: {
@@ -1919,11 +1884,11 @@ CommandSharedPtr HMICommandFactory::CreateCommand(
       }
       break;
     }
-    case hmi_apis::FunctionID::TTS_PerformInteraction: {
+    case hmi_apis::FunctionID::VR_PerformInteraction: {
       if (is_response) {
-        command.reset(new commands::TTSPerformInteractionResponse(message));
+        command.reset(new commands::VRPerformInteractionResponse(message));
       } else {
-        command.reset(new commands::TTSPerformInteractionRequest(message));
+        command.reset(new commands::VRPerformInteractionRequest(message));
       }
       break;
     }
@@ -1955,12 +1920,12 @@ CommandSharedPtr HMICommandFactory::CreateCommand(
       command.reset(new commands::OnRecordStartdNotification(message));
       break;
     }
-    case hmi_apis::FunctionID::SDL_AddStatisticsInfo: {
-      command.reset(new commands::AddStatisticsInfoNotification(message));
-      break;
-    }
-    case hmi_apis::FunctionID::SDL_OnSystemError: {
-      command.reset(new commands::OnSystemErrorNotification(message));
+    case hmi_apis::FunctionID::BasicCommunication_SystemRequest: {
+      if (is_response) {
+        command.reset(new commands::BasicCommunicationSystemResponse(message));
+      } else {
+        command.reset(new commands::BasicCommunicationSystemRequest(message));
+      }
       break;
     }
   }

@@ -217,11 +217,11 @@ class MessageHelper {
     static void SendOnAppUnregNotificationToHMI(ApplicationConstSharedPtr app);
     static void ResetGlobalproperties(ApplicationSharedPtr app);
 
-  static void SendActivateAppToHMI(uint32_t const app_id);
-  static void GetDeviceInfoForHandle(const uint32_t device_handle,
-                                     policy::DeviceParams* device_info);
-  static void GetDeviceInfoForApp(uint32_t connection_key,
-                                  policy::DeviceParams* device_info);
+    static void SendActivateAppToHMI(uint32_t const app_id);
+    static void GetDeviceInfoForHandle(const uint32_t device_handle,
+                                       policy::DeviceInfo* device_info);
+    static void GetDeviceInfoForApp(const std::string& connection_key,
+                                    policy::DeviceInfo* device_info);
 
     /**
     * @brief Send SDL_ActivateApp response to HMI
@@ -234,25 +234,7 @@ class MessageHelper {
     * @brief Send OnSDLConsentNeeded to HMI for device data consent by user
     * @param device_info Device info, e.g. mac, handle, name
     */
-    static void SendOnSDLConsentNeeded(const policy::DeviceParams& device_info);
-
-    /**
-     * @brief Send GetUserFriendlyMessage response to HMI
-     * @param msg Appopriate messages params
-     * @param correlation_id Correlation id of request
-     */
-    static void SendGetUserFriendlyMessageResponse(
-        const std::vector<policy::UserFriendlyMessage>& msg,
-        uint32_t correlation_id);
-
-    /**
-     * @brief Send GetListOfPermissions response to HMI
-     * @param permissions Array of groups permissions
-     * @param correlation_id Correlation id of request
-     */
-    static void SendGetListOfPermissionsResponse(
-        std::vector<policy::FunctionalGroupPermission>& permissions,
-        uint32_t correlation_id);
+    static void SendOnSDLConsentNeeded(const policy::DeviceInfo& device_info);
 
     /*
      * @brief Sends notification to HMI to start video streaming
@@ -298,21 +280,6 @@ class MessageHelper {
     */
     static void SendOnAppPermissionsChangedNotification(
       uint32_t connection_key, const policy::AppPermissions& permissions);
-
-    /**
-     * @brief Send GetStatusUpdate response to HMI with current policy update
-     * status
-     * @param status Update status
-     * @param correlation_id Correlation id from request
-     */
-    static void SendGetStatusUpdateResponse(const std::string& status,
-                                            uint32_t correlation_id);
-
-    /**
-     * @brief Send OnStatusUpdate to HMI on policy update status change
-     * @param status Policy table update status
-     */
-    static void SendOnStatusUpdate(const std::string& status);
 
     /*
      * @brief Sends notification to HMI to start audio streaming

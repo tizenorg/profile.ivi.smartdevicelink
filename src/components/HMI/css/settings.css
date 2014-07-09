@@ -93,28 +93,34 @@
     margin-top: 70px;
 }
 
-#settingsView .policies_settings_list{
-    height: 251px;
-    width: 598px;
-    left: 10px;
-}
-
-#policies_settings_list .list-content .ffw-button{
-    width: 537px;
-    padding-left: 10px;
-}
-
 #settingsView .settingsButton{
+
     float: left;
-    width: 536px;
+    width: 615px;
     margin-right: 10px;
-    height: 48px;
+    height: 51px;
     font-size: 20px;
     line-height: 50px;
     border: 1px solid #393939;
     cursor: pointer;
+    left: 10px;
     padding-left: 10px;
-    position: relative;
+}
+
+#settingsView .updateSDLButton{
+    top: 52px;
+}
+
+#settingsView .getStatusUpdate{
+    top: 104px;
+}
+
+#settingsView .getURLS{
+    top: 156px;
+}
+
+#settingsView .statisticsInfo{
+    top: 208px;
 }
 
 #policies_settings_status_info .listSelect{

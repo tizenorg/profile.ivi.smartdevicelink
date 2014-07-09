@@ -180,19 +180,6 @@ var StateManager = Em.StateManager.extend({
                     this._super();
                     SDL.DeviceConfigView.showDeviceList();
                 }
-            }),
-
-            appPermissionsList: Em.State.create({
-
-                enter: function () {
-
-                    this._super();
-
-                }
-            }),
-
-            appPermissions: Em.State.create({
-
             })
         })
     }),
