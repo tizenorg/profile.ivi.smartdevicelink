@@ -294,7 +294,7 @@ ApplicationSharedPtr ApplicationManagerImpl::RegisterApplication(
 
   application->set_name(name);
   application->set_device(device_id);
-
+  application->set_grammar_id(GenerateGrammarID());
   mobile_api::Language::eType launguage_desired =
       static_cast<mobile_api::Language::eType>(params[strings::language_desired]
           .asInt());
@@ -346,6 +346,9 @@ ApplicationSharedPtr ApplicationManagerImpl::RegisterApplication(
   application->set_version(version);
 
   application->set_mobile_app_id(message[strings::msg_params][strings::app_id]);
+  application->set_protocol_version(
+      static_cast<ProtocolVersion>(
+          message[strings::params][strings::protocol_version].asInt()));
 
   sync_primitives::AutoLock lock(applications_list_lock_);
 
@@ -402,7 +405,7 @@ bool ApplicationManagerImpl::ActivateApplication(ApplicationSharedPtr app) {
         }
       }
       if (curr_app->IsFullscreen()) {
-        MessageHelper::RemoveAppDataFromHMI(curr_app);
+        MessageHelper::ResetGlobalproperties(curr_app);
       }
     }
   }
@@ -488,7 +491,6 @@ mobile_api::HMILevel::eType ApplicationManagerImpl::PutApplicationInFull(
 }
 
 void ApplicationManagerImpl::DeactivateApplication(ApplicationSharedPtr app) {
-  MessageHelper::SendDeleteCommandRequestToHMI(app);
   MessageHelper::ResetGlobalproperties(app);
 }
 
@@ -648,6 +650,7 @@ void ApplicationManagerImpl::SendAudioPassThroughNotification(
 
 void ApplicationManagerImpl::StopAudioPassThru(int32_t application_key) {
   LOG4CXX_TRACE_ENTER(logger_);
+  sync_primitives::AutoLock lock(audio_pass_thru_lock_);
   if (NULL != media_manager_) {
     media_manager_->StopMicrophoneRecording(application_key);
   }
@@ -683,6 +686,7 @@ void ApplicationManagerImpl::OnMessageReceived(
   }
 
   utils::SharedPtr<Message> outgoing_message = ConvertRawMsgToMessage(message);
+
   if (outgoing_message) {
     messages_from_mobile_.PostMessage(
       impl::MessageFromMobile(outgoing_message));
@@ -724,7 +728,7 @@ void ApplicationManagerImpl::OnDeviceListUpdated(
     hmi_apis::FunctionID::BasicCommunication_UpdateDeviceList;
   so_to_send[jhs::S_PARAMS][jhs::S_MESSAGE_TYPE] =
     hmi_apis::messageType::request;
-  so_to_send[jhs::S_PARAMS][jhs::S_PROTOCOL_VERSION] = 2;
+  so_to_send[jhs::S_PARAMS][jhs::S_PROTOCOL_VERSION] = 3;
   so_to_send[jhs::S_PARAMS][jhs::S_PROTOCOL_TYPE] = 1;
   so_to_send[jhs::S_PARAMS][jhs::S_CORRELATION_ID] = GetNextHMICorrelationID();
   smart_objects::SmartObject* msg_params = MessageHelper::CreateDeviceListSO(
@@ -777,6 +781,10 @@ bool ApplicationManagerImpl::IsVideoStreamingAllowed(uint32_t connection_key) co
   }
 
   return false;
+}
+
+uint32_t ApplicationManagerImpl::GenerateGrammarID() {
+  return rand();
 }
 
 bool ApplicationManagerImpl::OnServiceStartedCallback(
@@ -900,6 +908,26 @@ void ApplicationManagerImpl::SendMessageToMobile(
     return;
   }
 
+  ApplicationSharedPtr app = application(
+                 (*message)[strings::params][strings::connection_key].asUInt());
+
+  if (!app) {
+     LOG4CXX_ERROR_EXT(logger_,
+                       "No application associated with connection key");
+     if ((*message)[strings::msg_params].keyExists(strings::result_code) &&
+         ((*message)[strings::msg_params][strings::result_code] ==
+             NsSmartDeviceLinkRPC::V1::Result::UNSUPPORTED_VERSION)) {
+       (*message)[strings::params][strings::protocol_version] =
+                        ProtocolVersion::kV1;
+     } else {
+       (*message)[strings::params][strings::protocol_version] =
+                ProtocolVersion::kV3;
+     }
+   } else {
+     (*message)[strings::params][strings::protocol_version] =
+           app->protocol_version();
+   }
+
   mobile_so_factory().attachSchema(*message);
   LOG4CXX_INFO(
     logger_,
@@ -976,7 +1004,7 @@ bool ApplicationManagerImpl::ManageMobileCommand(
           correlation_id,
           static_cast<int32_t>(mobile_apis::Result::APPLICATION_NOT_REGISTERED));
 
-      ApplicationManagerImpl::instance()->SendMessageToMobile(response);
+      SendMessageToMobile(response);
       return false;
     }
 
@@ -1042,7 +1070,7 @@ bool ApplicationManagerImpl::ManageMobileCommand(
             correlation_id,
             static_cast<int32_t>(mobile_apis::Result::TOO_MANY_PENDING_REQUESTS));
 
-        ApplicationManagerImpl::instance()->SendMessageToMobile(response);
+        SendMessageToMobile(response);
         return false;
       } else if (result ==
                  request_controller::RequestController::TOO_MANY_REQUESTS) {
@@ -1185,8 +1213,8 @@ bool ApplicationManagerImpl::ConvertMessageToSO(
     << "; json " << message.json_message());
 
   switch (message.protocol_version()) {
+    case ProtocolVersion::kV3:
     case ProtocolVersion::kV2: {
-
       if (!formatters::CFormatterJsonSDLRPCv2::fromString(
             message.json_message(),
             output,
@@ -1211,6 +1239,8 @@ bool ApplicationManagerImpl::ConvertMessageToSO(
         << output[jhs::S_PARAMS][jhs::S_FUNCTION_ID].asInt());
       output[strings::params][strings::connection_key] =
         message.connection_key();
+      output[strings::params][strings::protocol_version] =
+              message.protocol_version();
       if (message.binary_data()) {
         output[strings::params][strings::binary_data] =
           *(message.binary_data());
@@ -1311,22 +1341,26 @@ bool ApplicationManagerImpl::ConvertSOtoMessage(
   std::string output_string;
   switch (message.getElement(jhs::S_PARAMS).getElement(jhs::S_PROTOCOL_TYPE)
           .asInt()) {
-    case 0: {
-      if (message.getElement(jhs::S_PARAMS).getElement(jhs::S_PROTOCOL_VERSION).asInt() == 1) {
-        if (!formatters::CFormatterJsonSDLRPCv1::toString(message,
-            output_string)) {
-          LOG4CXX_WARN(logger_, "Failed to serialize smart object");
-          return false;
+    case 0:
+      {
+        if (message.getElement(jhs::S_PARAMS).getElement(jhs::S_PROTOCOL_VERSION).asInt() == 1) {
+          if (!formatters::CFormatterJsonSDLRPCv1::toString(message,
+              output_string)) {
+            LOG4CXX_WARN(logger_, "Failed to serialize smart object");
+            return false;
+          }
+          output.set_protocol_version(application_manager::kV1);
+        } else {
+          if (!formatters::CFormatterJsonSDLRPCv2::toString(message,
+              output_string)) {
+            LOG4CXX_WARN(logger_, "Failed to serialize smart object");
+            return false;
+          }
+          output.set_protocol_version(
+              static_cast<ProtocolVersion>(
+                  message.getElement(jhs::S_PARAMS).getElement(
+                                            jhs::S_PROTOCOL_VERSION).asUInt()));
         }
-        output.set_protocol_version(application_manager::kV1);
-      } else {
-        if (!formatters::CFormatterJsonSDLRPCv2::toString(message,
-            output_string)) {
-          LOG4CXX_WARN(logger_, "Failed to serialize smart object");
-          return false;
-        }
-        output.set_protocol_version(application_manager::kV2);
-      }
 
       break;
     }
@@ -1401,7 +1435,8 @@ utils::SharedPtr<Message> ApplicationManagerImpl::ConvertRawMsgToMessage(
   if (message->protocol_version() == 1) {
     convertion_result =
       MobileMessageHandler::HandleIncomingMessageProtocolV1(message);
-  } else if (message->protocol_version() == 2) {
+  } else if ((message->protocol_version() == 2) ||
+             (message->protocol_version() == 3)) {
     convertion_result =
       MobileMessageHandler::HandleIncomingMessageProtocolV2(message);
   } else {
@@ -1603,7 +1638,7 @@ void ApplicationManagerImpl::UnregisterApplication(
     StopAudioPassThru(app_id);
     MessageHelper::SendStopAudioPathThru();
   }
-  MessageHelper::RemoveAppDataFromHMI(it->second);
+  MessageHelper::ResetGlobalproperties(it->second);
   MessageHelper::SendOnAppUnregNotificationToHMI(it->second);
   applications_.erase(it);
   application_list_.erase(app_to_remove);
@@ -1626,7 +1661,8 @@ void ApplicationManagerImpl::Handle(const impl::MessageToMobile& message) {
   protocol_handler::RawMessage* rawMessage = 0;
   if (message->protocol_version() == application_manager::kV1) {
     rawMessage = MobileMessageHandler::HandleOutgoingMessageProtocolV1(message);
-  } else if (message->protocol_version() == application_manager::kV2) {
+  } else if ((message->protocol_version() == application_manager::kV2) ||
+             (message->protocol_version() == application_manager::kV3)) {
     rawMessage = MobileMessageHandler::HandleOutgoingMessageProtocolV2(message);
   } else {
     return;
@@ -1711,34 +1747,34 @@ void ApplicationManagerImpl::Unmute(VRTTSSessionChanging changing_state) {
 }
 
 mobile_apis::Result::eType ApplicationManagerImpl::SaveBinary(
-  const std::vector<uint8_t>& binary_data, const std::string& file_path,
-  const uint32_t offset) {
-  LOG4CXX_INFO(
-    logger_,
-    "SaveBinaryWithOffset  binary_size = " << binary_data.size()
-    << " offset = " << offset);
+    const std::vector<uint8_t>& binary_data, const std::string& file_path,
+    const std::string& file_name, const uint32_t offset) {
+  LOG4CXX_INFO(logger_,
+               "SaveBinaryWithOffset  binary_size = " << binary_data.size()
+               << " offset = " << offset);
 
-  if (binary_data.size() > file_system::GetAvailableDiskSpace()) {
+  if (binary_data.size() > file_system::GetAvailableDiskSpace(file_path)) {
     LOG4CXX_ERROR(logger_, "Out of free disc space.");
     return mobile_apis::Result::OUT_OF_MEMORY;
   }
 
-  uint32_t file_size = file_system::FileSize(file_path);
+  const std::string full_file_path = file_path + "/" + file_name;
+  uint32_t file_size = file_system::FileSize(full_file_path);
   std::ofstream* file_stream;
   if (offset != 0) {
     if (file_size != offset) {
-      LOG4CXX_INFO(
-        logger_,
-        "ApplicationManagerImpl::SaveBinaryWithOffset offset does'n match existing filesize");
+      LOG4CXX_INFO(logger_,
+                   "ApplicationManagerImpl::SaveBinaryWithOffset offset"
+                   << " does'n match existing file size");
       return mobile_apis::Result::INVALID_DATA;
     }
-    file_stream = file_system::Open(file_path, std::ios_base::app);
+    file_stream = file_system::Open(full_file_path, std::ios_base::app);
   } else {
     LOG4CXX_INFO(
       logger_,
       "ApplicationManagerImpl::SaveBinaryWithOffset offset is 0, rewrite");
     // if offset == 0: rewrite file
-    file_stream = file_system::Open(file_path, std::ios_base::out);
+    file_stream = file_system::Open(full_file_path, std::ios_base::out);
   }
 
   if (!file_system::Write(file_stream, binary_data.data(),
@@ -1746,9 +1782,39 @@ mobile_apis::Result::eType ApplicationManagerImpl::SaveBinary(
     file_system::Close(file_stream);
     return mobile_apis::Result::GENERIC_ERROR;
   }
+
   file_system::Close(file_stream);
   LOG4CXX_INFO(logger_, "Successfully write data to file");
   return mobile_apis::Result::SUCCESS;
+}
+
+uint32_t ApplicationManagerImpl::GetAvailableSpaceForApp(
+    const std::string& app_name) {
+  const uint32_t app_quota = profile::Profile::instance()->app_dir_quota();
+  std::string app_storage_path =
+      profile::Profile::instance()->app_storage_folder();
+
+  app_storage_path += "/";
+  app_storage_path += app_name;
+
+  if (file_system::DirectoryExists(app_storage_path)) {
+    uint32_t size_of_directory = file_system::DirectorySize(app_storage_path);
+    if (app_quota < size_of_directory) {
+      return 0;
+    }
+
+    uint32_t current_app_quota = app_quota - size_of_directory;
+    uint32_t available_disk_space =
+        file_system::GetAvailableDiskSpace(app_storage_path);
+
+    if (current_app_quota > available_disk_space) {
+      return available_disk_space;
+    } else {
+      return current_app_quota;
+    }
+  } else {
+    return app_quota;
+  }
 }
 
 bool ApplicationManagerImpl::IsHMICooperating() const {
