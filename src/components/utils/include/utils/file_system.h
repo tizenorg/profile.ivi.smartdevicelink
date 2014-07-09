@@ -74,6 +74,13 @@ uint32_t FileSize(const std::string& path);
 std::string CreateDirectory(const std::string& name);
 
 /**
+ * @brief Creates directory recursively
+ * @param path - full path to directory
+ * @return return true if directory was created or already exist
+ */
+bool CreateDirectoryRecursively(const std::string& path);
+
+/**
   * @brief Checks the file to see whether the file is a directory
   * @param name path to file
   * @return returns true if file is directory.

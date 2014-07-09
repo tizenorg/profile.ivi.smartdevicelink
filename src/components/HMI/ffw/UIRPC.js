@@ -1338,7 +1338,7 @@ FFW.UI = FFW.RPCObserver.create({
      * @param {String}
      *
      */
-    OnKeyboardInput: function (value) {
+    OnKeyboardInput: function (value, event) {
 
         Em.Logger.log("FFW.UI.OnKeyboardInput");
 
@@ -1348,7 +1348,7 @@ FFW.UI = FFW.RPCObserver.create({
             "method": "UI.OnKeyboardInput",
             "params": {
                 "data": value,
-                "event": "KEYPRESS"
+                "event": event
             }
         };
         this.client.send(JSONMessage);

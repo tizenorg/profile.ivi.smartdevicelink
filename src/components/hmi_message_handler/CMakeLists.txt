@@ -16,28 +16,24 @@ include_directories (
   ${CMAKE_SOURCE_DIR}/
 )
 
-IF (${QT_HMI})
+IF (HMIADAPTER STREQUAL "dbus")
     set (DBUS_SOURCE ./src/dbus_message_adapter.cc)
     set (DBUS_ADAPTER DBus)
-    set (MESSAGE_BROKER MessageBrokerClient MessageBrokerServer)
-ENDIF (${QT_HMI})
+ENDIF ()
 
 set (SOURCES
     ./src/hmi_message_handler_impl.cc
     ./src/messagebroker_adapter.cc
     ./src/hmi_message_adapter.cc
+    ./src/mqueue_adapter.cc
     ${DBUS_SOURCE}
 )
 
 set (LIBRARIES
+    Utils
     log4cxx
     ${DBUS_ADAPTER}
-    ${MESSAGE_BROKER}
 )
 
 add_library("HMIMessageHandler" ${SOURCES})
 target_link_libraries ("HMIMessageHandler" ${LIBRARIES})
-
-if( BUILD_SHARED_LIBS )
-  install (FILES ${CMAKE_CURRENT_BINARY_DIR}/libHMIMessageHandler.so DESTINATION lib)
-endif()

@@ -48,8 +48,7 @@ SDL.SDLController = Em.Object
             if ( SDL.SliderView.active
                 || SDL.InteractionChoicesView.active
                 || SDL.ScrollableMessage.active
-                || SDL.AudioPassThruPopUp.activate
-                || SDL.VRHelpListView.active) {
+                || SDL.AudioPassThruPopUp.activate) {
 
                 return 'HMI_OBSCURED';
             }
@@ -583,6 +582,11 @@ SDL.SDLController = Em.Object
                     SDL.SDLModel.VRCommands.splice(i, 1);
                 }
             }
+
+            SDL.VRPopUp.DeleteActivateApp(appID);
+            if (SDL.SDLModel.stateLimited == appID) {
+                SDL.SDLModel.set('stateLimited', null);
+            }
             SDL.SDLAppController.set('model', null);
         },
         /**
@@ -609,7 +613,7 @@ SDL.SDLController = Em.Object
                 if (SDL.SDLAppController.model.globalProperties.keyboardProperties.keypressMode) {
                     switch (SDL.SDLAppController.model.globalProperties.keyboardProperties.keypressMode) {
                         case 'SINGLE_KEYPRESS':{
-                            FFW.UI.OnKeyboardInput(str.charAt( str.length-1 ));
+                            FFW.UI.OnKeyboardInput(str.charAt( str.length-1 ), "KEYPRESS");
                             break;
                         }
                         case 'QUEUE_KEYPRESS':{

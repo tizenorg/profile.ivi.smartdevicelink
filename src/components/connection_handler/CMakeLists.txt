@@ -18,7 +18,3 @@ set(LIBRARIES
 )
 
 add_library("connectionHandler" ${SOURCES})
-
-if( BUILD_SHARED_LIBS )
-  install (FILES ${CMAKE_CURRENT_BINARY_DIR}/libconnectionHandler.so DESTINATION lib)
-endif()

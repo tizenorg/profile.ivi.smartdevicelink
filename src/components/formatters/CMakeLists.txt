@@ -23,7 +23,3 @@ set (FORMATTER_SOURCES
 add_library("formatters" ${SOURCES}
         ${FORMATTER_SOURCES}
 )
-
-if( BUILD_SHARED_LIBS )
-  install (FILES ${CMAKE_CURRENT_BINARY_DIR}/libformatters.so DESTINATION lib)
-endif()

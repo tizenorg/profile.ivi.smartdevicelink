@@ -280,6 +280,11 @@ class Profile : public utils::Singleton<Profile> {
      */
     const std::vector<uint32_t>& supported_diag_modes() const;
 
+    /**
+      * @brief Returns system files folder path
+      */
+    const std::string& system_files_path() const;
+
     // Members section
 
   protected:
@@ -403,10 +408,11 @@ class Profile : public utils::Singleton<Profile> {
     std::string                     app_info_storage_;
     int32_t                         heart_beat_timeout_;
     std::string                     preloaded_pt_file_;
-    std::string                     policy_shapshot_file_name_;
+    std::string                     policy_snapshot_file_name_;
     uint32_t                        transport_manager_disconnect_timeout_;
     bool                            use_last_state_;
     std::vector<uint32_t>           supported_diag_modes_;
+    std::string                     system_files_path_;
 
     DISALLOW_COPY_AND_ASSIGN(Profile);
 

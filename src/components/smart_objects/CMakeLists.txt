@@ -20,7 +20,3 @@ set (SOURCES
 
 add_library("SmartObjects" ${SOURCES})
 target_link_libraries ("SmartObjects" log4cxx)
-
-if( BUILD_SHARED_LIBS )
-  install (FILES ${CMAKE_CURRENT_BINARY_DIR}/libSmartObjects.so DESTINATION lib)
-endif()

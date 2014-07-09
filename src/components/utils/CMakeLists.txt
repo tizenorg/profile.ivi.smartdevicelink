@@ -33,12 +33,6 @@ add_library("Utils" ${SOURCES})
 
 IF(${CMAKE_SYSTEM_NAME} MATCHES "QNX")
 	target_link_libraries ("Utils" log4cxx apr-1 aprutil-1)
-ELSEIF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+else()
 	target_link_libraries ("Utils" log4cxx apr-1 aprutil-1 rt)
-ELSE()
-  target_link_libraries ("Utils" log4cxx apr-1 aprutil-1)
-endif()
-
-if( BUILD_SHARED_LIBS )
-  install (FILES ${CMAKE_CURRENT_BINARY_DIR}/libUtils.so DESTINATION lib)
 endif()

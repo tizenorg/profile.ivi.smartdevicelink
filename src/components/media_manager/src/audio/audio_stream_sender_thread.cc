@@ -38,7 +38,6 @@
 
 
 #include <string>
-#include <unistd.h>
 #include "application_manager/application_manager_impl.h"
 #include "application_manager/mobile_command_factory.h"
 #include "application_manager/application_impl.h"
@@ -125,7 +124,7 @@ void AudioStreamSenderThread::sendAudioChunkToMobile() {
                                      std::vector<uint8_t>(from, to));
     binaryData.clear();
   }
-#if !defined(EXTENDED_MEDIA)
+#if !defined(EXTENDED_MEDIA_MODE)
   // without recording stream restart reading 1-sec file
   offset_ = 0;
 #endif
