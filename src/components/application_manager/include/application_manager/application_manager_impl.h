@@ -119,8 +119,9 @@ using namespace threads;
  * when we have them.
  */
 struct MessageFromMobile: public utils::SharedPtr<Message> {
-  explicit MessageFromMobile(const utils::SharedPtr<Message>& message):
-    utils::SharedPtr<Message>(message) {}
+  explicit MessageFromMobile(const utils::SharedPtr<Message>& message)
+      : utils::SharedPtr<Message>(message) {
+  }
   // PrioritizedQueue requres this method to decide which priority to assign
   size_t PriorityOrder() const {
     return (*this)->Priority().OrderingValue();
@@ -129,8 +130,10 @@ struct MessageFromMobile: public utils::SharedPtr<Message> {
 
 struct MessageToMobile: public utils::SharedPtr<Message> {
   explicit MessageToMobile(const utils::SharedPtr<Message>& message,
-                           bool final_message):
-    utils::SharedPtr<Message>(message), is_final(final_message) {}
+                           bool final_message)
+      : utils::SharedPtr<Message>(message),
+        is_final(final_message) {
+  }
   // PrioritizedQueue requres this method to decide which priority to assign
   size_t PriorityOrder() const {
     return (*this)->Priority().OrderingValue();
@@ -140,8 +143,9 @@ struct MessageToMobile: public utils::SharedPtr<Message> {
 };
 
 struct MessageFromHmi: public utils::SharedPtr<Message> {
-  explicit MessageFromHmi(const utils::SharedPtr<Message>& message):
-    utils::SharedPtr<Message>(message) {}
+  explicit MessageFromHmi(const utils::SharedPtr<Message>& message)
+      : utils::SharedPtr<Message>(message) {
+  }
   // PrioritizedQueue requres this method to decide which priority to assign
   size_t PriorityOrder() const {
     return (*this)->Priority().OrderingValue();
@@ -149,8 +153,9 @@ struct MessageFromHmi: public utils::SharedPtr<Message> {
 };
 
 struct MessageToHmi: public utils::SharedPtr<Message> {
-  explicit MessageToHmi(const utils::SharedPtr<Message>& message):
-    utils::SharedPtr<Message>(message) {}
+  explicit MessageToHmi(const utils::SharedPtr<Message>& message)
+      : utils::SharedPtr<Message>(message) {
+  }
   // PrioritizedQueue requres this method to decide which priority to assign
   size_t PriorityOrder() const {
     return (*this)->Priority().OrderingValue();
@@ -158,24 +163,18 @@ struct MessageToHmi: public utils::SharedPtr<Message> {
 };
 
 // Short type names for proiritized message queues
-typedef threads::MessageLoopThread <
-utils::PrioritizedQueue<MessageFromMobile> > FromMobileQueue;
-typedef threads::MessageLoopThread <
-utils::PrioritizedQueue<MessageToMobile> > ToMobileQueue;
-typedef threads::MessageLoopThread <
-utils::PrioritizedQueue<MessageFromHmi> > FromHmiQueue;
-typedef threads::MessageLoopThread <
-utils::PrioritizedQueue<MessageToHmi> > ToHmiQueue;
+typedef threads::MessageLoopThread<utils::PrioritizedQueue<MessageFromMobile> > FromMobileQueue;
+typedef threads::MessageLoopThread<utils::PrioritizedQueue<MessageToMobile> > ToMobileQueue;
+typedef threads::MessageLoopThread<utils::PrioritizedQueue<MessageFromHmi> > FromHmiQueue;
+typedef threads::MessageLoopThread<utils::PrioritizedQueue<MessageToHmi> > ToHmiQueue;
 }
 
 class ApplicationManagerImpl : public ApplicationManager,
   public hmi_message_handler::HMIMessageObserver,
   public protocol_handler::ProtocolObserver,
   public connection_handler::ConnectionHandlerObserver,
-  public impl::FromMobileQueue::Handler,
-  public impl::ToMobileQueue::Handler,
-  public impl::FromHmiQueue::Handler,
-  public impl::ToHmiQueue::Handler,
+    public impl::FromMobileQueue::Handler, public impl::ToMobileQueue::Handler,
+    public impl::FromHmiQueue::Handler, public impl::ToHmiQueue::Handler,
   public utils::Singleton<ApplicationManagerImpl> {
     friend class ResumeCtrl;
   public:
@@ -196,6 +195,8 @@ class ApplicationManagerImpl : public ApplicationManager,
     std::vector<ApplicationSharedPtr> applications_by_button(uint32_t button);
     std::vector<ApplicationSharedPtr> applications_by_ivi(uint32_t vehicle_info);
     std::vector<ApplicationSharedPtr> applications_with_navi();
+  ApplicationSharedPtr application_by_policy_id(
+      const std::string& policy_app_id) const;
     /**
           * @brief Notifies all components interested in Vehicle Data update
           * i.e. new value of odometer etc and returns list of applications
@@ -204,8 +205,7 @@ class ApplicationManagerImpl : public ApplicationManager,
           * @param new value (for integer values currently) of vehicle data
           */
     std::vector<utils::SharedPtr<Application>> IviInfoUpdated(
-        VehicleDataType vehicle_info,
-        int value);
+      VehicleDataType vehicle_info, int value);
 
     /////////////////////////////////////////////////////
 
@@ -217,10 +217,13 @@ class ApplicationManagerImpl : public ApplicationManager,
      * @brief Closes application by id
      *
      * @param app_id Application id
+     * @param reason reason of unregistering application
      * @param is_resuming describes - is this unregister
      *        is normal or need to be resumed
      */
-    void UnregisterApplication(const uint32_t& app_id, bool is_resuming = false);
+    void UnregisterApplication(const uint32_t& app_id,
+                               mobile_apis::Result::eType reason,
+                               bool is_resuming = false);
 
     /*
      * @brief Sets unregister reason for closing all registered applications
@@ -236,8 +239,7 @@ class ApplicationManagerImpl : public ApplicationManager,
      * when User chooses to reset HU.
      * Resets Policy Table if applicable.
      */
-    void HeadUnitReset(
-      mobile_api::AppInterfaceUnregisteredReason::eType reason);
+  void HeadUnitReset(mobile_api::AppInterfaceUnregisteredReason::eType reason);
 
     /*
      * @brief Closes all registered applications
@@ -371,7 +373,8 @@ class ApplicationManagerImpl : public ApplicationManager,
     // if |final_message| parameter is set connection to mobile will be closed
     // after processing this message
     void SendMessageToMobile(
-      const utils::SharedPtr<smart_objects::SmartObject>& message, bool final_message = false);
+      const utils::SharedPtr<smart_objects::SmartObject>& message,
+      bool final_message = false);
     bool ManageMobileCommand(
       const utils::SharedPtr<smart_objects::SmartObject>& message);
     void SendMessageToHMI(
@@ -383,24 +386,23 @@ class ApplicationManagerImpl : public ApplicationManager,
     /*
      * @brief Overriden ProtocolObserver method
      */
-    virtual void OnMessageReceived(const protocol_handler::
-                                   RawMessagePtr& message);
+  virtual void OnMessageReceived(
+      const protocol_handler::RawMessagePtr& message);
 
     /*
      * @brief Overriden ProtocolObserver method
      */
-    virtual void OnMobileMessageSent(const protocol_handler::
-                                     RawMessagePtr& message);
+  virtual void OnMobileMessageSent(
+      const protocol_handler::RawMessagePtr& message);
 
-    void OnMessageReceived(
-      hmi_message_handler::MessageSharedPointer message);
+  void OnMessageReceived(hmi_message_handler::MessageSharedPointer message);
     void OnErrorSending(hmi_message_handler::MessageSharedPointer message);
 
     void OnDeviceListUpdated(const connection_handler::DeviceList& device_list);
     void RemoveDevice(const connection_handler::DeviceHandle& device_handle);
-    bool OnServiceStartedCallback(const connection_handler::DeviceHandle& device_handle,
-                                  const int32_t& session_key,
-                                  const protocol_handler::ServiceType& type);
+  bool OnServiceStartedCallback(
+      const connection_handler::DeviceHandle& device_handle,
+      const int32_t& session_key, const protocol_handler::ServiceType& type);
     void OnServiceEndedCallback(const int32_t& session_key,
                                 const protocol_handler::ServiceType& type);
 
@@ -444,8 +446,7 @@ class ApplicationManagerImpl : public ApplicationManager,
      * @param correlation_id Correlation ID of the HMI request
      * @param app_id Application ID
      */
-    void set_application_id(const int32_t correlation_id,
-                            const uint32_t app_id);
+  void set_application_id(const int32_t correlation_id, const uint32_t app_id);
 
     /*
      * @brief Change AudioStreamingState for all application according to
@@ -484,20 +485,37 @@ class ApplicationManagerImpl : public ApplicationManager,
       return resume_ctrl_;
     }
 
+    /**
+     * Generate grammar ID
+     *
+     * @return New grammar ID
+     */
     uint32_t GenerateGrammarID();
+
     /*
      * @brief Save binary data to specified directory
      *
      * @param binary data
      * @param path for saving data
+     * @param file_name File name
      * @param offset for saving data to existing file with offset.
      *        If offset is 0 - create new file ( overrite existing )
      *
+     *
      * @return SUCCESS if file was saved, other code otherwise
      */
-    mobile_apis::Result::eType SaveBinary(const std::vector<uint8_t>& binary_data,
-                                          const std::string& file_path,
-                                          const uint32_t offset);
+    mobile_apis::Result::eType SaveBinary(
+        const std::vector<uint8_t>& binary_data,
+        const std::string& file_path,
+        const std::string& file_name,
+        const uint32_t offset);
+
+    /**
+     * @brief Get available app space
+     * @param name of app
+     * @return free app space.
+     */
+    uint32_t GetAvailableSpaceForApp(const std::string& name);
 
     /*
      * @brief returns true if HMI is cooperating
@@ -563,7 +581,6 @@ class ApplicationManagerImpl : public ApplicationManager,
 
   private:
 
-
     // members
     ResumeCtrl resume_ctrl_;
 
@@ -617,7 +634,6 @@ class ApplicationManagerImpl : public ApplicationManager,
 #   ifdef ENABLE_LOG
     static log4cxx::LoggerPtr logger_;
 #   endif // ENABLE_LOG
-
     static uint32_t corelation_id_;
     static const uint32_t max_corelation_id_;
 

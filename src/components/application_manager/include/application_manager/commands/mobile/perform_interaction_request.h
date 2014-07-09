@@ -113,14 +113,6 @@ class PerformInteractionRequest : public CommandRequestImpl  {
   (const smart_objects::SmartObject& message);
 
   /*
-   * @brief Sends VRDeleteCommand request to HMI
-   *
-   * @param app_id Application ID
-   *
-   */
-  void SendVrDeleteCommand(ApplicationSharedPtr app);
-
-  /*
    * @brief Sends PerformInteraction response to mobile side
    *
    * @param message which should send to mobile side
@@ -199,6 +191,12 @@ class PerformInteractionRequest : public CommandRequestImpl  {
    * otherwise FALSE
    */
   bool CheckVrHelpItemPositions(application_manager::ApplicationSharedPtr const app);
+
+  /*
+   * @brief Disable PerformInteraction state in application and
+   * delete VR commands from HMI
+   */
+  void DisablePerformInteraction();
 
   // members
   timer::TimerThread<PerformInteractionRequest> timer_;

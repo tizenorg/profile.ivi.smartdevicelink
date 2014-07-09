@@ -37,6 +37,7 @@
 #include "utils/macro.h"
 #include "application_manager/application_manager_impl.h"
 #include "application_manager/message_helper.h"
+#include "application_manager/policies/policy_handler.h"
 #include "application_manager/commands/command_impl.h"
 #include "connection_handler/connection_handler_impl.h"
 #include "application_manager/application.h"
@@ -44,18 +45,17 @@
 #include "utils/file_system.h"
 #include "interfaces/MOBILE_API.h"
 
-
 namespace {
 
-log4cxx::LoggerPtr g_logger =
-  log4cxx::LoggerPtr(log4cxx::Logger::getLogger("ApplicationManager"));
+log4cxx::LoggerPtr g_logger = log4cxx::LoggerPtr(
+                                log4cxx::Logger::getLogger("ApplicationManager"));
 
 hmi_apis::Common_Language::eType ToCommonLanguage(
   mobile_apis::Language::eType mobile_language) {
   // Update this check if mobile_api::Language
   // or hmi_apis::Common_Language changes.
   // Or, better, generate functions like this from XML
-  long lang_val =  long(mobile_language);
+  long lang_val = long(mobile_language);
   long max_common_lang_val = long(hmi_apis::Common_Language::NO_NO);
   long max_mobile_lang = long(mobile_apis::Language::NO_NO);
   if (max_common_lang_val != max_mobile_lang) {
@@ -68,7 +68,26 @@ hmi_apis::Common_Language::eType ToCommonLanguage(
   return hmi_apis::Common_Language::eType(lang_val);
 }
 
+typedef std::map<std::string, hmi_apis::Common_AppPriority::eType> CommonAppPriorityMap;
+CommonAppPriorityMap app_priority_values = {
+  {"NORMAL", hmi_apis::Common_AppPriority::NORMAL},
+  {"COMMUNICATION", hmi_apis::Common_AppPriority::COMMUNICATION},
+  {"EMERGENCY", hmi_apis::Common_AppPriority::EMERGENCY},
+  {"NAVIGATION", hmi_apis::Common_AppPriority::NAVIGATION},
+  {"NONE", hmi_apis::Common_AppPriority::NONE},
+  {"VOICE_COMMUNICATION", hmi_apis::Common_AppPriority::VOICE_COMMUNICATION},
+  {"INVALID_ENUM", hmi_apis::Common_AppPriority::INVALID_ENUM}
+};
+
+const uint32_t GetPriorityCode(const std::string& priority) {
+  CommonAppPriorityMap::const_iterator it = app_priority_values.find(priority);
+  if (app_priority_values.end() != it) {
+    return static_cast<uint32_t>((*it).second);
+  }
+  return static_cast<uint32_t>(hmi_apis::Common_AppPriority::INVALID_ENUM);
 }
+
+} // namespase
 
 namespace application_manager {
 
@@ -85,7 +104,8 @@ bool ValidateSoftButtons(smart_objects::SmartObject& soft_buttons) {
 
       // Image name must not be empty
       std::string file_name = buttonImage[strings::value].asString();
-      file_name.erase(remove(file_name.begin(), file_name.end(), ' '), file_name.end());
+      file_name.erase(remove(file_name.begin(), file_name.end(), ' '),
+                      file_name.end());
       if (file_name.empty()) {
         return false;
       }
@@ -96,41 +116,43 @@ bool ValidateSoftButtons(smart_objects::SmartObject& soft_buttons) {
 
 }
 std::pair<const char*, VehicleDataType> kVehicleDataInitializer[] = {
-  std::make_pair(strings::gps,  VehicleDataType::GPS),
-  std::make_pair(strings::speed, VehicleDataType::SPEED),
-  std::make_pair(strings::rpm, VehicleDataType::RPM),
-  std::make_pair(strings::fuel_level, VehicleDataType::FUELLEVEL),
-  std::make_pair(strings::fuel_level_state, VehicleDataType::FUELLEVEL_STATE),
-  std::make_pair(strings::instant_fuel_consumption, VehicleDataType::FUELCONSUMPTION),
-  std::make_pair(strings::external_temp, VehicleDataType::EXTERNTEMP),
-  std::make_pair(strings::vin, VehicleDataType::VIN),
-  std::make_pair(strings::prndl, VehicleDataType::PRNDL),
-  std::make_pair(strings::tire_pressure, VehicleDataType::TIREPRESSURE),
-  std::make_pair(strings::odometer, VehicleDataType::ODOMETER),
-  std::make_pair(strings::belt_status, VehicleDataType::BELTSTATUS),
-  std::make_pair(strings::body_information, VehicleDataType::BODYINFO),
-  std::make_pair(strings::device_status, VehicleDataType::DEVICESTATUS),
-  std::make_pair(strings::driver_braking, VehicleDataType::BRAKING),
-  std::make_pair(strings::wiper_status, VehicleDataType::WIPERSTATUS),
-  std::make_pair(strings::head_lamp_status, VehicleDataType::HEADLAMPSTATUS),
+  std::make_pair(strings::gps, VehicleDataType::GPS), std::make_pair(
+    strings::speed, VehicleDataType::SPEED), std::make_pair(
+      strings::rpm, VehicleDataType::RPM), std::make_pair(
+        strings::fuel_level, VehicleDataType::FUELLEVEL), std::make_pair(
+          strings::fuel_level_state, VehicleDataType::FUELLEVEL_STATE),
+  std::make_pair(strings::instant_fuel_consumption,
+  VehicleDataType::FUELCONSUMPTION), std::make_pair(
+    strings::external_temp, VehicleDataType::EXTERNTEMP), std::make_pair(
+      strings::vin, VehicleDataType::VIN), std::make_pair(
+        strings::prndl, VehicleDataType::PRNDL), std::make_pair(
+          strings::tire_pressure, VehicleDataType::TIREPRESSURE), std::make_pair(
+            strings::odometer, VehicleDataType::ODOMETER), std::make_pair(
+              strings::belt_status, VehicleDataType::BELTSTATUS), std::make_pair(
+                strings::body_information, VehicleDataType::BODYINFO), std::make_pair(
+                  strings::device_status, VehicleDataType::DEVICESTATUS), std::make_pair(
+                    strings::driver_braking, VehicleDataType::BRAKING), std::make_pair(
+                      strings::wiper_status, VehicleDataType::WIPERSTATUS), std::make_pair(
+                        strings::head_lamp_status, VehicleDataType::HEADLAMPSTATUS),
   std::make_pair(strings::e_call_info, VehicleDataType::ECALLINFO),
   std::make_pair(strings::airbag_status, VehicleDataType::AIRBAGSTATUS),
   std::make_pair(strings::emergency_event, VehicleDataType::EMERGENCYEVENT),
-  std::make_pair(strings::cluster_mode_status, VehicleDataType::CLUSTERMODESTATUS),
-  std::make_pair(strings::my_key, VehicleDataType::MYKEY),
+  std::make_pair(strings::cluster_mode_status,
+  VehicleDataType::CLUSTERMODESTATUS), std::make_pair(
+    strings::my_key, VehicleDataType::MYKEY),
   /*
    NOT DEFINED in mobile API
    std::make_pair(strings::gps,                      VehicleDataType::BATTVOLTAGE),
    */
   std::make_pair(strings::engine_torque, VehicleDataType::ENGINETORQUE),
   std::make_pair(strings::acc_pedal_pos, VehicleDataType::ACCPEDAL),
-  std::make_pair(strings::steering_wheel_angle, VehicleDataType::STEERINGWHEEL),
+  std::make_pair(strings::steering_wheel_angle,
+  VehicleDataType::STEERINGWHEEL),
 };
 
-const VehicleData MessageHelper::vehicle_data_(kVehicleDataInitializer,
-    kVehicleDataInitializer +
-    ARRAYSIZE(kVehicleDataInitializer));
-
+const VehicleData MessageHelper::vehicle_data_(
+  kVehicleDataInitializer, kVehicleDataInitializer +
+  ARRAYSIZE(kVehicleDataInitializer));
 
 #ifdef HMI_DBUS_API
 namespace {
@@ -168,6 +190,61 @@ static VehicleInfo_Requests ivi_subrequests[] = {
 }
 #endif // #ifdef HMI_DBUS_API
 
+std::string MessageHelper::CommonLanguageToString(
+  hmi_apis::Common_Language::eType language) {
+  switch (language) {
+    case hmi_apis::Common_Language::EN_US:
+      return "en-us";
+    case hmi_apis::Common_Language::ES_MX:
+      return "es-mx";
+    case hmi_apis::Common_Language::FR_CA:
+      return "fr-ca";
+    case hmi_apis::Common_Language::DE_DE:
+      return "de-de";
+    case hmi_apis::Common_Language::ES_ES:
+      return "es-es";
+    case hmi_apis::Common_Language::EN_GB:
+      return "en-gb";
+    case hmi_apis::Common_Language::RU_RU:
+      return "ru-ru";
+    case hmi_apis::Common_Language::TR_TR:
+      return "tr-tr";
+    case hmi_apis::Common_Language::PL_PL:
+      return "pl-pl";
+    case hmi_apis::Common_Language::FR_FR:
+      return "fr-fr";
+    case hmi_apis::Common_Language::IT_IT:
+      return "it-it";
+    case hmi_apis::Common_Language::SV_SE:
+      return "sv-se";
+    case hmi_apis::Common_Language::PT_PT:
+      return "pt-pt";
+    case hmi_apis::Common_Language::NL_NL:
+      return "nl-nl";
+    case hmi_apis::Common_Language::EN_AU:
+      return "en-au";
+    case hmi_apis::Common_Language::ZH_CN:
+      return "zh-cn";
+    case hmi_apis::Common_Language::ZH_TW:
+      return "zh-tw";
+    case hmi_apis::Common_Language::JA_JP:
+      return "ja-jp";
+    case hmi_apis::Common_Language::AR_SA:
+      return "as-sa";
+    case hmi_apis::Common_Language::KO_KR:
+      return "ko-kr";
+    case hmi_apis::Common_Language::PT_BR:
+      return "pt-br";
+    case hmi_apis::Common_Language::CS_CZ:
+      return "cs-cz";
+    case hmi_apis::Common_Language::DA_DK:
+      return "da-dk";
+    case hmi_apis::Common_Language::NO_NO:
+      return "no-no";
+    default:
+      return "";
+  }
+}
 
 void MessageHelper::SendHMIStatusNotification(
   const Application& application_impl) {
@@ -216,16 +293,16 @@ void MessageHelper::SendOnAppRegisteredNotificationToHMI(
   message[strings::msg_params][strings::application][strings::app_name] =
     application_impl.name();
 
-  const smart_objects::SmartObject* ngn_media_screen_name =
-    application_impl.ngn_media_screen_name();
+  const smart_objects::SmartObject* ngn_media_screen_name = application_impl
+      .ngn_media_screen_name();
 
   if (resumption) {
     message[strings::msg_params][strings::resumption] = true;
   }
 
   if (ngn_media_screen_name) {
-    message[strings::msg_params][strings::application]
-    [strings::ngn_media_screen_app_name] = *ngn_media_screen_name;
+    message[strings::msg_params][strings::application][strings::ngn_media_screen_app_name] =
+      *ngn_media_screen_name;
   }
 
   message[strings::msg_params][strings::application][strings::icon] =
@@ -252,18 +329,28 @@ void MessageHelper::SendOnAppRegisteredNotificationToHMI(
       *app_type;
   }
   if (application_impl.vr_synonyms()) {
-    message[strings::msg_params][strings::vr_synonyms] = *(application_impl.vr_synonyms());
+    message[strings::msg_params][strings::vr_synonyms] = *(application_impl
+        .vr_synonyms());
   }
   if (application_impl.tts_name()) {
-    message[strings::msg_params][strings::tts_name] = *(application_impl.tts_name());
+    message[strings::msg_params][strings::tts_name] = *(application_impl
+        .tts_name());
+  }
+  std::string priority;
+  policy::PolicyHandler::instance()->policy_manager()->GetPriority(
+    application_impl.mobile_app_id()->asString(), &priority);
+  if (!priority.empty()) {
+    message[strings::msg_params]["priority"] = GetPriorityCode(priority);
   }
   DCHECK(ApplicationManagerImpl::instance()->ManageHMICommand(notification));
 }
 
-smart_objects::SmartObject* MessageHelper::GetHashUpdateNotification(const uint32_t app_id) {
+smart_objects::SmartObject* MessageHelper::GetHashUpdateNotification(
+  const uint32_t app_id) {
 
   LOG4CXX_INFO(g_logger, "GetHashUpdateNotification" << app_id);
-  ApplicationSharedPtr app = ApplicationManagerImpl::instance()->application(app_id);
+  ApplicationSharedPtr app = ApplicationManagerImpl::instance()->application(
+                               app_id);
   DCHECK(app.get());
 
   smart_objects::SmartObject* message = new smart_objects::SmartObject(
@@ -301,8 +388,7 @@ void MessageHelper::SendOnAppInterfaceUnregisteredNotificationToMobile(
 
   message[strings::params][strings::connection_key] = connection_key;
 
-  message[strings::msg_params][strings::reason] =
-    static_cast<int32_t>(reason);
+  message[strings::msg_params][strings::reason] = static_cast<int32_t>(reason);
 
   DCHECK(ApplicationManagerImpl::instance()->ManageMobileCommand(notification));
 }
@@ -468,10 +554,13 @@ smart_objects::SmartObject* MessageHelper::CreateBlockedByPoliciesResponse(
     return NULL;
   }
 
-  (*response)[strings::params][strings::function_id] = static_cast<int>(function_id);
-  (*response)[strings::params][strings::message_type] = static_cast<int>(kResponse);
+  (*response)[strings::params][strings::function_id] =
+    static_cast<int>(function_id);
+  (*response)[strings::params][strings::message_type] =
+    static_cast<int>(kResponse);
   (*response)[strings::msg_params][strings::success] = false;
-  (*response)[strings::msg_params][strings::result_code] = static_cast<int>(result);
+  (*response)[strings::msg_params][strings::result_code] =
+    static_cast<int>(result);
   (*response)[strings::params][strings::correlation_id] = correlation_id;
   (*response)[strings::params][strings::connection_key] = connection_key;
   (*response)[strings::params][strings::protocol_type] =
@@ -496,9 +585,9 @@ smart_objects::SmartObject* MessageHelper::CreateDeviceListSO(
   int32_t index = 0;
   for (connection_handler::DeviceList::const_iterator it = devices.begin();
        devices.end() != it; ++it) {
-    const connection_handler::Device& d = static_cast<connection_handler::Device>(it->second);
-    list_so[index][strings::name] =
-      d.user_friendly_name();
+    const connection_handler::Device& d =
+      static_cast<connection_handler::Device>(it->second);
+    list_so[index][strings::name] = d.user_friendly_name();
     list_so[index][strings::id] = it->second.device_handle();
     ++index;
   }
@@ -513,10 +602,8 @@ smart_objects::SmartObject* MessageHelper::CreateModuleInfoSO(
     return NULL;
   }
   smart_objects::SmartObject& object = *module_info;
-  object[strings::params][strings::message_type] =
-    static_cast<int>(kRequest);
-  object[strings::params][strings::function_id] =
-    static_cast<int>(function_id);
+  object[strings::params][strings::message_type] = static_cast<int>(kRequest);
+  object[strings::params][strings::function_id] = static_cast<int>(function_id);
   object[strings::params][strings::correlation_id] =
     ApplicationManagerImpl::instance()->GetNextHMICorrelationID();
   object[strings::msg_params] = smart_objects::SmartObject(
@@ -547,7 +634,8 @@ bool MessageHelper::SendIVISubscribtions(const uint32_t app_id) {
   LOG4CXX_INFO(g_logger, " MessageHelper::SendIVISubscribtions ");
 
   bool succes = true;
-  ApplicationSharedPtr app = ApplicationManagerImpl::instance()->application(app_id);
+  ApplicationSharedPtr app = ApplicationManagerImpl::instance()->application(
+                               app_id);
   DCHECK(app.get());
 
   SmartObjectList requests = GetIVISubscribtionRequests(app_id);
@@ -560,10 +648,12 @@ bool MessageHelper::SendIVISubscribtions(const uint32_t app_id) {
   return succes;
 }
 
-MessageHelper::SmartObjectList MessageHelper::GetIVISubscribtionRequests(const uint32_t app_id) {
+MessageHelper::SmartObjectList MessageHelper::GetIVISubscribtionRequests(
+  const uint32_t app_id) {
   LOG4CXX_INFO(g_logger, " MessageHelper::GetIVISubscribtionRequests ");
 
-  ApplicationSharedPtr app = ApplicationManagerImpl::instance()->application(app_id);
+  ApplicationSharedPtr app = ApplicationManagerImpl::instance()->application(
+                               app_id);
   DCHECK(app);
 
   smart_objects::SmartObject msg_params = smart_objects::SmartObject(
@@ -588,7 +678,6 @@ MessageHelper::SmartObjectList MessageHelper::GetIVISubscribtionRequests(const u
   (*request)[strings::msg_params] = msg_params;
   hmi_requests.push_back(request);
 #endif // #ifdef HMI_JSON_API
-
 #ifdef HMI_DBUS_API
   //Generate list of ivi_subrequests
   for (int i = 0; i < sizeof(ivi_subrequests) / sizeof(ivi_subrequests[0]); ++i) {
@@ -649,7 +738,8 @@ void MessageHelper::SendGlobalPropertiesToHMI(ApplicationConstSharedPtr app) {
   }
 }
 
-MessageHelper::SmartObjectList MessageHelper::CreateGlobalPropertiesRequestsToHMI(ApplicationConstSharedPtr app) {
+MessageHelper::SmartObjectList MessageHelper::CreateGlobalPropertiesRequestsToHMI(
+  ApplicationConstSharedPtr app) {
 
   SmartObjectList requests;
   DCHECK(app.get());
@@ -736,7 +826,8 @@ MessageHelper::SmartObjectList MessageHelper::CreateGlobalPropertiesRequestsToHM
   return requests;
 }
 
-smart_objects::SmartObject* MessageHelper::CreateAppVrHelp(ApplicationConstSharedPtr app) {
+smart_objects::SmartObject* MessageHelper::CreateAppVrHelp(
+  ApplicationConstSharedPtr app) {
   smart_objects::SmartObject* result = new smart_objects::SmartObject(
     smart_objects::SmartType_Map);
   if (!result) {
@@ -752,8 +843,8 @@ smart_objects::SmartObject* MessageHelper::CreateAppVrHelp(ApplicationConstShare
   if (app->vr_help()) {
     vr_help[strings::vr_help] = (*app->vr_help());
   } else {
-    const std::set<ApplicationSharedPtr>& apps = ApplicationManagerImpl::instance()
-        ->applications();
+    const std::set<ApplicationSharedPtr>& apps =
+      ApplicationManagerImpl::instance()->applications();
 
     int32_t index = 0;
     std::set<ApplicationSharedPtr>::const_iterator it_app = apps.begin();
@@ -772,8 +863,7 @@ smart_objects::SmartObject* MessageHelper::CreateAppVrHelp(ApplicationConstShare
 
     for (; commands.end() != it; ++it) {
       smart_objects::SmartObject item(smart_objects::SmartType_Map);
-      item[strings::text] =
-        (*it->second)[strings::vr_commands][0].asString();
+      item[strings::text] = (*it->second)[strings::vr_commands][0].asString();
       item[strings::position] = index + 1;
       vr_help[strings::vr_help][index++] = item;
     }
@@ -781,7 +871,8 @@ smart_objects::SmartObject* MessageHelper::CreateAppVrHelp(ApplicationConstShare
   return result;
 }
 
-MessageHelper::SmartObjectList MessageHelper::CreateShowRequestToHMI(ApplicationConstSharedPtr app) {
+MessageHelper::SmartObjectList MessageHelper::CreateShowRequestToHMI(
+  ApplicationConstSharedPtr app) {
   DCHECK(app.get());
 
   SmartObjectList requests;
@@ -808,16 +899,17 @@ void MessageHelper::SendShowRequestToHMI(ApplicationConstSharedPtr app) {
   if (!app) {
     return;
   }
-  SmartObjectList shows  = CreateShowRequestToHMI(app);
+  SmartObjectList shows = CreateShowRequestToHMI(app);
 
-  for (SmartObjectList::const_iterator it = shows.begin();
-       it != shows.end(); ++it) {
+  for (SmartObjectList::const_iterator it = shows.begin(); it != shows.end();
+       ++it) {
     DCHECK(ApplicationManagerImpl::instance()->ManageHMICommand(*it));
   }
 
 }
 
-void MessageHelper::SendShowConstantTBTRequestToHMI(ApplicationConstSharedPtr app) {
+void MessageHelper::SendShowConstantTBTRequestToHMI(
+  ApplicationConstSharedPtr app) {
   if (!app) {
     return;
   }
@@ -850,13 +942,14 @@ void MessageHelper::SendAddCommandRequestToHMI(ApplicationConstSharedPtr app) {
     return;
   }
   SmartObjectList requests = CreateAddCommandRequestToHMI(app);
-  for (SmartObjectList::iterator it = requests.begin();
-       it != requests.end(); ++it) {
+  for (SmartObjectList::iterator it = requests.begin(); it != requests.end();
+       ++it) {
     DCHECK(ApplicationManagerImpl::instance()->ManageHMICommand(*it));
   }
 }
 
-MessageHelper::SmartObjectList MessageHelper::CreateAddCommandRequestToHMI(ApplicationConstSharedPtr app) {
+MessageHelper::SmartObjectList MessageHelper::CreateAddCommandRequestToHMI(
+  ApplicationConstSharedPtr app) {
   DCHECK(app.get());
 
   SmartObjectList requests;
@@ -982,11 +1075,16 @@ void MessageHelper::SendChangeRegistrationRequestToHMI(ApplicationConstSharedPtr
 void MessageHelper::SendAddVRCommandToHMI(
   uint32_t cmd_id, const smart_objects::SmartObject& vr_commands,
   uint32_t app_id) {
-  smart_objects::SmartObject* request = CreateAddVRCommandToHMI(cmd_id, vr_commands, app_id);
+  smart_objects::SmartObject* request = CreateAddVRCommandToHMI(cmd_id,
+                                        vr_commands,
+                                        app_id);
   DCHECK(ApplicationManagerImpl::instance()->ManageHMICommand(request));
 }
 
-smart_objects::SmartObject* MessageHelper::CreateAddVRCommandToHMI(uint32_t cmd_id, const NsSmartDeviceLink::NsSmartObjects::SmartObject& vr_commands, uint32_t app_id) {
+smart_objects::SmartObject* MessageHelper::CreateAddVRCommandToHMI(
+  uint32_t cmd_id,
+  const NsSmartDeviceLink::NsSmartObjects::SmartObject& vr_commands,
+  uint32_t app_id) {
   smart_objects::SmartObject* vr_command = new smart_objects::SmartObject(
     smart_objects::SmartType_Map);
 
@@ -1014,6 +1112,8 @@ smart_objects::SmartObject* MessageHelper::CreateAddVRCommandToHMI(uint32_t cmd_
   if (0 < app_id) {
     msg_params[strings::app_id] = app_id;
   }
+  msg_params[strings::grammar_id] =
+    ApplicationManagerImpl::instance()->application(app_id)->get_grammar_id();
   msg_params[strings::type] = hmi_apis::Common_VRCommandType::Command;
 
   (*vr_command)[strings::msg_params] = msg_params;
@@ -1024,13 +1124,14 @@ smart_objects::SmartObject* MessageHelper::CreateAddVRCommandToHMI(uint32_t cmd_
 void MessageHelper::SendAddSubMenuRequestToHMI(ApplicationConstSharedPtr app) {
   DCHECK(app.get());
   SmartObjectList requests = CreateAddSubMenuRequestToHMI(app);
-  for (SmartObjectList::iterator it = requests.begin();
-       it != requests.end(); ++it) {
+  for (SmartObjectList::iterator it = requests.begin(); it != requests.end();
+       ++it) {
     DCHECK(ApplicationManagerImpl::instance()->ManageHMICommand(*it));
   }
 }
 
-MessageHelper::SmartObjectList MessageHelper::CreateAddSubMenuRequestToHMI(ApplicationConstSharedPtr app) {
+MessageHelper::SmartObjectList MessageHelper::CreateAddSubMenuRequestToHMI(
+  ApplicationConstSharedPtr app) {
   SmartObjectList requsets;
   const SubMenuMap& sub_menu = app->sub_menu_map();
   SubMenuMap::const_iterator i = sub_menu.begin();
@@ -1082,7 +1183,8 @@ void MessageHelper::SendOnSdlCloseNotificationToHMI() {
   ApplicationManagerImpl::instance()->ManageHMICommand(&message);
 }
 
-void MessageHelper::SendOnAppUnregNotificationToHMI(ApplicationConstSharedPtr app) {
+void MessageHelper::SendOnAppUnregNotificationToHMI(
+  ApplicationConstSharedPtr app) {
   smart_objects::SmartObject* notification = new smart_objects::SmartObject(
     smart_objects::SmartType_Map);
   if (!notification) {
@@ -1114,11 +1216,23 @@ void MessageHelper::SendActivateAppToHMI(uint32_t const app_id) {
     ApplicationManagerImpl::instance()->GetNextHMICorrelationID();
   (*message)[strings::msg_params][strings::app_id] = app_id;
 
+  application_manager::ApplicationConstSharedPtr app =
+    application_manager::ApplicationManagerImpl::instance()
+    ->application(app_id);
+
+  std::string priority;
+  policy::PolicyHandler::instance()->policy_manager()->GetPriority(
+    app->mobile_app_id()->asString(), &priority);
+
+  if (!priority.empty()) {
+    (*message)[strings::msg_params]["priority"] = GetPriorityCode(priority);
+  }
+
   ApplicationManagerImpl::instance()->ManageHMICommand(message);
 }
 
 void MessageHelper::GetDeviceInfoForHandle(const uint32_t device_handle,
-    policy::DeviceInfo* device_info) {
+    policy::DeviceParams* device_info) {
   if (!device_info) {
     return;
   }
@@ -1127,22 +1241,20 @@ void MessageHelper::GetDeviceInfoForHandle(const uint32_t device_handle,
     &device_info->device_mac_address);
 }
 
-void MessageHelper::GetDeviceInfoForApp(const std::string& connection_key,
-                                        policy::DeviceInfo* device_info) {
+void MessageHelper::GetDeviceInfoForApp(uint32_t connection_key,
+                                        policy::DeviceParams* device_info) {
   if (!device_info) {
     return;
   }
 
-  const std::set<utils::SharedPtr<Application>> app_list =
-        application_manager::ApplicationManagerImpl::instance()->applications();
-  std::set<utils::SharedPtr<Application>>::const_iterator it = app_list.begin();
-  std::set<utils::SharedPtr<Application>>::const_iterator it_end = app_list.end();
-  for (; it != it_end; ++it) {
-    if ((*it)->app_id() == atoi(connection_key.c_str())) {
-      device_info->device_handle = (*it)->device();
-      break;
-    }
-  }
+  device_info->device_handle = ApplicationManagerImpl::instance()->application(
+                                 connection_key)->device();
+  /*for (; it != it_end; ++it) {
+   if ((*it)->app_id() == atoi(connection_key.c_str())) {
+   device_info->device_handle = (*it)->device();
+   break;
+   }
+   }*/
 
   GetDeviceInfoForHandle(device_info->device_handle, device_info);
 }
@@ -1158,13 +1270,12 @@ void MessageHelper::SendActivateAppResponse(policy::AppPermissions& permissions,
   (*message)[strings::params][strings::function_id] =
     hmi_apis::FunctionID::SDL_ActivateApp;
   (*message)[strings::params][strings::message_type] = MessageType::kResponse;
-  (*message)[strings::params][strings::correlation_id] = correlation_id/*
-   ApplicationManagerImpl::instance()->GetNextHMICorrelationID()*/;
+  (*message)[strings::params][strings::correlation_id] = correlation_id;
   (*message)[strings::params][strings::protocol_type] =
     commands::CommandImpl::hmi_protocol_type_;
   (*message)[strings::params][strings::protocol_version] =
     commands::CommandImpl::protocol_version_;
-  (*message)[strings::params]["code"] = 0;
+  (*message)[strings::params][hmi_response::code] = 0;
 
   bool isSDLAllowed = permissions.isSDLAllowed;
   if (!isSDLAllowed) {
@@ -1177,33 +1288,46 @@ void MessageHelper::SendActivateAppResponse(policy::AppPermissions& permissions,
 
   (*message)[strings::msg_params]["isSDLAllowed"] = isSDLAllowed;
 
-  // TODO(AOleynik): Add processing of other parameters  
-  (*message)[strings::msg_params]["isPermissionsConsentNeeded"] = false;  
-  (*message)[strings::msg_params]["isAppRevoked"] = false;
+  // TODO(AOleynik): Add processing of other parameters
+  if (permissions.appRevoked) {
+    (*message)[strings::msg_params]["isAppRevoked"] = permissions.appRevoked;
+  }
+  if (permissions.isAppPermissionsRevoked) {
+    (*message)[strings::msg_params]["isAppPermissionsRevoked"] = permissions
+        .isAppPermissionsRevoked;
+    (*message)[strings::msg_params]["appRevokedPermissions"] =
+      smart_objects::SmartObject(smart_objects::SmartType_Array);
+    for (size_t i = 0; i < permissions.appRevokedPermissions.size(); ++i) {
+      (*message)[strings::msg_params]["appRevokedPermissions"][i] = permissions
+          .appRevokedPermissions[i];
+    }
+  }
+  if (permissions.appPermissionsConsentNeeded) {
+    (*message)[strings::msg_params]["isPermissionsConsentNeeded"] = permissions
+        .appPermissionsConsentNeeded;
+  }
+  if (!permissions.priority.empty()) {
+    (*message)[strings::msg_params]["priority"] = GetPriorityCode(
+          permissions.priority);
+  }
 
   ApplicationManagerImpl::instance()->ManageHMICommand(message);
 
   // If application is revoked it should not be activated
-  if ((*message)[strings::msg_params]["isAppRevoked"].asBool()) {
+  if (permissions.appRevoked) {
     return;
   }
 
   // Send HMI status notification to mobile
-  const std::set<ApplicationSharedPtr> app_list =
-        application_manager::ApplicationManagerImpl::instance()->applications();
-  std::set<ApplicationSharedPtr>::const_iterator it = app_list.begin();
-  std::set<ApplicationSharedPtr>::const_iterator it_end = app_list.end();
-  for (; it != it_end; ++it) {
-    if ((*it)->app_id() == permissions.application_id) {
-      ApplicationManagerImpl::instance()->ActivateApplication((*it));
-      break;
-    }
+  ApplicationSharedPtr app = ApplicationManagerImpl::instance()
+                             ->application_by_policy_id(permissions.application_id);
+  if (app) {
+    ApplicationManagerImpl::instance()->ActivateApplication(app);
   }
 }
 
-
 void MessageHelper::SendOnSDLConsentNeeded(
-  const policy::DeviceInfo& device_info) {
+  const policy::DeviceParams& device_info) {
   smart_objects::SmartObject* message = new smart_objects::SmartObject(
     smart_objects::SmartType_Map);
   if (!message) {
@@ -1217,6 +1341,160 @@ void MessageHelper::SendOnSDLConsentNeeded(
 
   (*message)[strings::msg_params]["device"]["id"] = device_info.device_handle;
   (*message)[strings::msg_params]["device"]["name"] = device_info.device_name;
+
+  ApplicationManagerImpl::instance()->ManageHMICommand(message);
+}
+
+void MessageHelper::SendPolicyUpdate(
+  const std::string& file_path,
+  int timeout,
+  const std::vector<int>& retries) {
+  smart_objects::SmartObject* message = new smart_objects::SmartObject(
+    smart_objects::SmartType_Map);
+  smart_objects::SmartObject& object = *message;
+  object[strings::params][strings::function_id] =
+    hmi_apis::FunctionID::BasicCommunication_PolicyUpdate;
+  object[strings::params][strings::message_type] = MessageType::kRequest;
+  object[strings::params][strings::correlation_id] =
+    ApplicationManagerImpl::instance()->GetNextHMICorrelationID();
+  object[strings::params][strings::protocol_version] =
+    commands::CommandImpl::protocol_version_;
+  object[strings::params][strings::protocol_type] =
+    commands::CommandImpl::hmi_protocol_type_;
+
+  object[strings::msg_params][hmi_request::file] = file_path;
+  object[strings::msg_params][strings::timeout] = timeout;
+  object[strings::msg_params][hmi_request::retry] = smart_objects::SmartObject(
+        smart_objects::SmartType_Array);
+  for (size_t i = 0; i < retries.size(); ++i) {
+    object[strings::msg_params][hmi_request::retry][i] = retries[i];
+  }
+  ApplicationManagerImpl::instance()->ManageHMICommand(message);
+}
+
+void MessageHelper::SendUpdateSDLResponse(const std::string& result,
+    uint32_t correlation_id) {
+  smart_objects::SmartObject* message = new smart_objects::SmartObject(
+    smart_objects::SmartType_Map);
+  if (!message) {
+    return;
+  }
+
+  (*message)[strings::params][strings::function_id] =
+    hmi_apis::FunctionID::SDL_UpdateSDL;
+  (*message)[strings::params][strings::message_type] =
+    MessageType::kResponse;
+  (*message)[strings::params][strings::correlation_id] = correlation_id;
+  (*message)[strings::params][hmi_response::code] = 0;
+
+  (*message)[strings::msg_params]["result"] = result;
+
+  ApplicationManagerImpl::instance()->ManageHMICommand(message);
+}
+
+void MessageHelper::SendGetUserFriendlyMessageResponse(
+  const std::vector<policy::UserFriendlyMessage>& msg,
+  uint32_t correlation_id) {
+  smart_objects::SmartObject* message = new smart_objects::SmartObject(
+    smart_objects::SmartType_Map);
+  if (!message) {
+    return;
+  }
+
+  (*message)[strings::params][strings::function_id] =
+    hmi_apis::FunctionID::SDL_GetUserFriendlyMessage;
+  (*message)[strings::params][strings::message_type] =
+    MessageType::kResponse;
+  (*message)[strings::params][strings::correlation_id] = correlation_id;
+  (*message)[strings::params][hmi_response::code] = 0;
+
+  // If no any messages found - skip sending of "messages" param
+  if (msg.empty()) {
+    ApplicationManagerImpl::instance()->ManageHMICommand(message);
+  }
+
+  const std::string messages = "messages";
+  (*message)[strings::msg_params][messages] =
+    smart_objects::SmartObject(smart_objects::SmartType_Array);
+
+  smart_objects::SmartObject& user_friendly_messages =
+    (*message)[strings::msg_params][messages];
+
+
+  const std::string tts = "ttsString";
+  const std::string label = "label";
+  const std::string line1 = "line1";
+  const std::string line2 = "line2";
+  const std::string textBody = "textBody";
+
+  std::vector<policy::UserFriendlyMessage>::const_iterator it = msg.begin();
+  std::vector<policy::UserFriendlyMessage>::const_iterator it_end = msg.end();
+  for (uint32_t index = 0; it != it_end; ++it, ++index) {
+    user_friendly_messages[index] = smart_objects::SmartObject(
+                                      smart_objects::SmartType_Map);
+
+    smart_objects::SmartObject& msg = user_friendly_messages[index];
+
+    if (!it->tts.empty()) {
+      msg[tts] = it->tts;
+    }
+    if (!it->label.empty()) {
+      msg[label] = it->label;
+    }
+    if (!it->line1.empty()) {
+      msg[line1] = it->line1;
+    }
+    if (!it->line2.empty()) {
+      msg[line2] = it->line2;
+    }
+    if (!it->text_body.empty()) {
+      msg[textBody] = it->text_body;
+    }
+  }
+
+  ApplicationManagerImpl::instance()->ManageHMICommand(message);
+}
+
+void MessageHelper::SendGetListOfPermissionsResponse(
+  std::vector<policy::FunctionalGroupPermission>& permissions,
+  uint32_t correlation_id) {
+  smart_objects::SmartObject* message = new smart_objects::SmartObject(
+    smart_objects::SmartType_Map);
+  if (!message) {
+    return;
+  }
+
+  (*message)[strings::params][strings::function_id] =
+    hmi_apis::FunctionID::SDL_GetListOfPermissions;
+  (*message)[strings::params][strings::message_type] =
+    MessageType::kResponse;
+  (*message)[strings::params][strings::correlation_id] = correlation_id;
+  (*message)[strings::params][hmi_response::code] = 0;
+
+  const std::string allowed_functions = "allowedFunctions";
+  (*message)[strings::msg_params][allowed_functions] =
+    smart_objects::SmartObject(smart_objects::SmartType_Array);
+
+  smart_objects::SmartObject& allowed_functions_array =
+    (*message)[strings::msg_params][allowed_functions];
+
+  std::vector<policy::FunctionalGroupPermission>::const_iterator it =
+    permissions.begin();
+  std::vector<policy::FunctionalGroupPermission>::const_iterator it_end =
+    permissions.end();
+  for (uint32_t index = 0; it != it_end; ++it, ++index) {
+    allowed_functions_array[index] = smart_objects::SmartObject(
+                                       smart_objects::SmartType_Map);
+
+    smart_objects::SmartObject& item = allowed_functions_array[index];
+    item[strings::name] = (*it).group_name;
+    item[strings::id] = (*it).group_id;
+    policy::PermissionState permission_state = (*it).state;
+    // If state undefined, 'allowed' parameter should be absent
+    if (policy::kUndefined != permission_state) {
+      item["allowed"] = policy::kAllowed == permission_state;
+    }
+  }
 
   ApplicationManagerImpl::instance()->ManageHMICommand(message);
 }
@@ -1301,11 +1579,11 @@ void MessageHelper::ResetGlobalproperties(ApplicationSharedPtr app) {
   SendGlobalPropertiesToHMI(app);
 }
 
-void MessageHelper::SendNaviStartStream(
-  const std::string& url, int32_t connection_key) {
+void MessageHelper::SendNaviStartStream(const std::string& url,
+                                        int32_t connection_key) {
   LOG4CXX_INFO(g_logger, "MessageHelper::SendNaviStartStream");
-  smart_objects::SmartObject* start_stream =
-    new smart_objects::SmartObject(smart_objects::SmartType_Map);
+  smart_objects::SmartObject* start_stream = new smart_objects::SmartObject(
+    smart_objects::SmartType_Map);
 
   if (!start_stream) {
     return;
@@ -1322,13 +1600,12 @@ void MessageHelper::SendNaviStartStream(
   (*start_stream)[strings::params][strings::correlation_id] =
     ApplicationManagerImpl::instance()->GetNextHMICorrelationID();
 
-  smart_objects::SmartObject msg_params =
-    smart_objects::SmartObject(smart_objects::SmartType_Map);
+  smart_objects::SmartObject msg_params = smart_objects::SmartObject(
+      smart_objects::SmartType_Map);
 
   uint32_t app_id = 0;
   connection_handler::ConnectionHandlerImpl::instance()->GetDataOnSessionKey(
-    connection_key,
-    &app_id);
+    connection_key, &app_id);
 
   msg_params[strings::app_id] = app_id;
   msg_params[strings::url] = url;
@@ -1339,8 +1616,8 @@ void MessageHelper::SendNaviStartStream(
 }
 
 void MessageHelper::SendNaviStopStream(int32_t connection_key) {
-  smart_objects::SmartObject* stop_stream =
-    new smart_objects::SmartObject(smart_objects::SmartType_Map);
+  smart_objects::SmartObject* stop_stream = new smart_objects::SmartObject(
+    smart_objects::SmartType_Map);
 
   if (!stop_stream) {
     return;
@@ -1357,13 +1634,12 @@ void MessageHelper::SendNaviStopStream(int32_t connection_key) {
   (*stop_stream)[strings::params][strings::correlation_id] =
     ApplicationManagerImpl::instance()->GetNextHMICorrelationID();
 
-  smart_objects::SmartObject msg_params =
-    smart_objects::SmartObject(smart_objects::SmartType_Map);
+  smart_objects::SmartObject msg_params = smart_objects::SmartObject(
+      smart_objects::SmartType_Map);
 
   uint32_t app_id = 0;
   connection_handler::ConnectionHandlerImpl::instance()->GetDataOnSessionKey(
-    connection_key,
-    &app_id);
+    connection_key, &app_id);
 
   msg_params[strings::app_id] = app_id;
 
@@ -1372,11 +1648,11 @@ void MessageHelper::SendNaviStopStream(int32_t connection_key) {
   ApplicationManagerImpl::instance()->ManageHMICommand(stop_stream);
 }
 
-void MessageHelper::SendAudioStartStream(
-  const std::string& url, int32_t connection_key) {
+void MessageHelper::SendAudioStartStream(const std::string& url,
+    int32_t connection_key) {
 
-  smart_objects::SmartObject* start_stream =
-    new smart_objects::SmartObject(smart_objects::SmartType_Map);
+  smart_objects::SmartObject* start_stream = new smart_objects::SmartObject(
+    smart_objects::SmartType_Map);
 
   if (!start_stream) {
     return;
@@ -1393,13 +1669,12 @@ void MessageHelper::SendAudioStartStream(
   (*start_stream)[strings::params][strings::correlation_id] =
     ApplicationManagerImpl::instance()->GetNextHMICorrelationID();
 
-  smart_objects::SmartObject msg_params =
-    smart_objects::SmartObject(smart_objects::SmartType_Map);
+  smart_objects::SmartObject msg_params = smart_objects::SmartObject(
+      smart_objects::SmartType_Map);
 
   uint32_t app_id = 0;
   connection_handler::ConnectionHandlerImpl::instance()->GetDataOnSessionKey(
-    connection_key,
-    &app_id);
+    connection_key, &app_id);
 
   msg_params[strings::app_id] = app_id;
   msg_params[strings::url] = url;
@@ -1410,8 +1685,8 @@ void MessageHelper::SendAudioStartStream(
 }
 
 void MessageHelper::SendAudioStopStream(int32_t connection_key) {
-  smart_objects::SmartObject* stop_stream =
-    new smart_objects::SmartObject(smart_objects::SmartType_Map);
+  smart_objects::SmartObject* stop_stream = new smart_objects::SmartObject(
+    smart_objects::SmartType_Map);
 
   if (!stop_stream) {
     return;
@@ -1428,13 +1703,12 @@ void MessageHelper::SendAudioStopStream(int32_t connection_key) {
   (*stop_stream)[strings::params][strings::correlation_id] =
     ApplicationManagerImpl::instance()->GetNextHMICorrelationID();
 
-  smart_objects::SmartObject msg_params =
-    smart_objects::SmartObject(smart_objects::SmartType_Map);
+  smart_objects::SmartObject msg_params = smart_objects::SmartObject(
+      smart_objects::SmartType_Map);
 
   uint32_t app_id = 0;
   connection_handler::ConnectionHandlerImpl::instance()->GetDataOnSessionKey(
-    connection_key,
-    &app_id);
+    connection_key, &app_id);
 
   msg_params[strings::app_id] = app_id;
 
@@ -1448,11 +1722,12 @@ bool MessageHelper::SendStopAudioPathThru() {
 
   NsSmartDeviceLink::NsSmartObjects::SmartObject* result =
     new NsSmartDeviceLink::NsSmartObjects::SmartObject;
-  const uint32_t hmi_correlation_id = ApplicationManagerImpl::instance()->
-                                      GetNextHMICorrelationID();
+  const uint32_t hmi_correlation_id = ApplicationManagerImpl::instance()
+                                      ->GetNextHMICorrelationID();
   NsSmartDeviceLink::NsSmartObjects::SmartObject& request = *result;
   request[strings::params][strings::message_type] = MessageType::kRequest;
-  request[strings::params][strings::function_id] = hmi_apis::FunctionID::UI_EndAudioPassThru;
+  request[strings::params][strings::function_id] =
+    hmi_apis::FunctionID::UI_EndAudioPassThru;
   request[strings::params][strings::correlation_id] = hmi_correlation_id;
   request[strings::params][strings::protocol_version] =
     commands::CommandImpl::protocol_version_;
@@ -1482,7 +1757,7 @@ void MessageHelper::SendPolicySnapshotNotification(
     content[strings::msg_params][mobile_notification::syncp_url] = url;
   }
   content[strings::msg_params][strings::file_type] =
-    mobile_apis::FileType::JSON;
+    mobile_apis::FileType::BINARY;
   content[strings::msg_params][strings::request_type] =
     mobile_apis::RequestType::HTTP;
   /*if (-1 != timeout) {
@@ -1516,7 +1791,7 @@ void MessageHelper::SendOnPermissionsChangeNotification(
 
   content[strings::msg_params] = msg_params;
 
-  content[strings::msg_params][strings::app_id] = connection_key;
+  //content[strings::msg_params][strings::app_id] = connection_key;
 
   content[strings::msg_params]["permissionItem"] = smart_objects::SmartObject(
         smart_objects::SmartType_Array);
@@ -1626,9 +1901,91 @@ void MessageHelper::SendOnAppPermissionsChangedNotification(
   message[strings::msg_params][strings::app_id] = connection_key;
 
   // TODO(AOleynik): Add other parameters processing from incoming struct
-  message[strings::msg_params]["appRevoked"] = permissions.appRevoked;
+  if (permissions.appRevoked) {
+    message[strings::msg_params]["appRevoked"] = permissions.appRevoked;
+  }
+  if (permissions.isAppPermissionsRevoked) {
+    message[strings::msg_params]["isAppPermissionsRevoked"] = permissions
+        .isAppPermissionsRevoked;
+    message[strings::msg_params]["appRevokedPermissions"] =
+      smart_objects::SmartObject(smart_objects::SmartType_Array);
+    for (size_t i = 0; i < permissions.appRevokedPermissions.size(); ++i) {
+      message[strings::msg_params]["appRevokedPermissions"][i] = permissions
+          .appRevokedPermissions[i];
+    }
+  }
+  if (permissions.appPermissionsConsentNeeded) {
+    message[strings::msg_params]["appPermissionsConsentNeeded"] = permissions
+        .appPermissionsConsentNeeded;
+  }
+  if (permissions.appUnauthorized) {
+    message[strings::msg_params]["appUnauthorized"] = permissions
+        .appUnauthorized;
+  }
+  if (!permissions.priority.empty()) {
+    message[strings::msg_params]["priority"] = GetPriorityCode(
+          permissions.priority);
+  }
 
   ApplicationManagerImpl::instance()->ManageHMICommand(&message);
+}
+
+void MessageHelper::SendGetStatusUpdateResponse(const std::string& status,
+    uint32_t correlation_id) {
+  smart_objects::SmartObject* message = new smart_objects::SmartObject(
+    smart_objects::SmartType_Map);
+  if (!message) {
+    return;
+  }
+
+  (*message)[strings::params][strings::function_id] =
+    hmi_apis::FunctionID::SDL_GetStatusUpdate;
+  (*message)[strings::params][strings::message_type] =
+    MessageType::kResponse;
+  (*message)[strings::params][strings::correlation_id] = correlation_id;
+  (*message)[strings::params][hmi_response::code] = 0;
+
+  (*message)[strings::msg_params]["status"] = status;
+
+  ApplicationManagerImpl::instance()->ManageHMICommand(message);
+}
+
+void MessageHelper::SendOnStatusUpdate(const std::string& status) {
+  smart_objects::SmartObject* message = new smart_objects::SmartObject(
+    smart_objects::SmartType_Map);
+  if (!message) {
+    return;
+  }
+
+  (*message)[strings::params][strings::function_id] =
+    hmi_apis::FunctionID::SDL_OnStatusUpdate;
+  (*message)[strings::params][strings::message_type] =
+    MessageType::kNotification;
+
+  (*message)[strings::msg_params]["status"] = status;
+
+  ApplicationManagerImpl::instance()->ManageHMICommand(message);
+}
+
+void MessageHelper::SendGetSystemInfoRequest() {
+  smart_objects::SmartObject* message = new smart_objects::SmartObject(
+    smart_objects::SmartType_Map);
+  if (!message) {
+    return;
+  }
+
+  (*message)[strings::params][strings::function_id] =
+    hmi_apis::FunctionID::BasicCommunication_GetSystemInfo;
+  (*message)[strings::params][strings::message_type] =
+    MessageType::kRequest;
+  (*message)[strings::params][strings::correlation_id] =
+    ApplicationManagerImpl::instance()->GetNextHMICorrelationID();
+  (*message)[strings::params][strings::protocol_version] =
+    commands::CommandImpl::protocol_version_;
+  (*message)[strings::params][strings::protocol_type] =
+    commands::CommandImpl::hmi_protocol_type_;
+
+  ApplicationManagerImpl::instance()->ManageHMICommand(message);
 }
 
 mobile_apis::Result::eType MessageHelper::VerifyImageFiles(
@@ -1643,14 +2000,14 @@ mobile_apis::Result::eType MessageHelper::VerifyImageFiles(
   } else if (NsSmartDeviceLink::NsSmartObjects::SmartType_Map
              == message.getType()) {
     if (message.keyExists(strings::image_type)) {
-      mobile_apis::Result::eType verification_result =
-        VerifyImage(message, app);
+      mobile_apis::Result::eType verification_result = VerifyImage(message,
+          app);
 
       if (mobile_apis::Result::SUCCESS != verification_result) {
-        return verification_result; // exit point
+        return verification_result;  // exit point
       }
     } else {
-      std::set < std::string > keys = message.enumerate();
+      std::set<std::string> keys = message.enumerate();
 
       for (std::set<std::string>::const_iterator key = keys.begin();
            key != keys.end(); ++key) {
@@ -1677,23 +2034,24 @@ mobile_apis::Result::eType MessageHelper::VerifyImage(
     return mobile_apis::Result::INVALID_DATA;
   }
 
-  std::string relative_file_path;
-  if (file_name.size() > 0 && file_name[0] == '/') {
-    relative_file_path = file_name;
-  } else {
-    relative_file_path = app->name();
-    relative_file_path += "/";
-    relative_file_path += file_name;
-  }
+  std::string full_file_path =
+    profile::Profile::instance()->app_storage_folder() + "/";
 
-  std::string full_file_path = file_system::FullPath(relative_file_path);
+  if (file_name.size() > 0 && file_name[0] == '/') {
+    full_file_path += file_name;
+  } else {
+
+    full_file_path += app->name();
+    full_file_path += "/";
+    full_file_path += file_name;
+  }
 
   if (!file_system::FileExists(full_file_path)) {
     return mobile_apis::Result::INVALID_DATA;
   }
 
-  const HMICapabilities& hmi_capabilities =
-    ApplicationManagerImpl::instance()->hmi_capabilities();
+  const HMICapabilities& hmi_capabilities = ApplicationManagerImpl::instance()
+      ->hmi_capabilities();
   mobile_apis::ImageType::eType image_type =
     static_cast<mobile_apis::ImageType::eType>(image[strings::image_type]
         .asInt());
@@ -1706,8 +2064,8 @@ mobile_apis::Result::eType MessageHelper::VerifyImage(
   return mobile_apis::Result::SUCCESS;
 }
 
-bool MessageHelper::VerifySoftButtonText
-(smart_objects::SmartObject& soft_button) {
+bool MessageHelper::VerifySoftButtonText(
+  smart_objects::SmartObject& soft_button) {
   std::string text = soft_button[strings::text].asString();
   text.erase(remove(text.begin(), text.end(), ' '), text.end());
   text.erase(remove(text.begin(), text.end(), '\n'), text.end());
@@ -1726,14 +2084,14 @@ mobile_apis::Result::eType MessageHelper::ProcessSoftButtons(
     return mobile_apis::Result::SUCCESS;
   }
 
-  const HMICapabilities& hmi_capabilities =
-    ApplicationManagerImpl::instance()->hmi_capabilities();
-  const smart_objects::SmartObject* soft_button_capabilities =
-    hmi_capabilities.soft_button_capabilities();
+  const HMICapabilities& hmi_capabilities = ApplicationManagerImpl::instance()
+      ->hmi_capabilities();
+  const smart_objects::SmartObject* soft_button_capabilities = hmi_capabilities
+      .soft_button_capabilities();
   bool image_supported = false;
   if (soft_button_capabilities) {
-    image_supported =
-      (*soft_button_capabilities)[hmi_response::image_supported].asBool();
+    image_supported = (*soft_button_capabilities)[hmi_response::image_supported]
+                      .asBool();
   }
 
   smart_objects::SmartObject& request_soft_buttons =
@@ -1761,8 +2119,8 @@ mobile_apis::Result::eType MessageHelper::ProcessSoftButtons(
                 request_soft_buttons[i][strings::image], app);
 
           if (mobile_apis::Result::SUCCESS != verification_result) {
-            if (mobile_apis::Result::UNSUPPORTED_RESOURCE ==
-                verification_result) {
+            if (mobile_apis::Result::UNSUPPORTED_RESOURCE
+                == verification_result) {
               request_soft_buttons[i].erase(strings::image);
               flag_unsuported_resource = true;
             } else {
@@ -1789,7 +2147,7 @@ mobile_apis::Result::eType MessageHelper::ProcessSoftButtons(
         if (request_soft_buttons[i].keyExists(strings::text)) {
           VerifySoftButtonText(request_soft_buttons[i]);
         } else {
-          return  mobile_apis::Result::INVALID_DATA;
+          return mobile_apis::Result::INVALID_DATA;
         }
 
         bool image_exist = false;
@@ -1804,11 +2162,11 @@ mobile_apis::Result::eType MessageHelper::ProcessSoftButtons(
                 request_soft_buttons[i][strings::image], app);
 
           if (mobile_apis::Result::SUCCESS != verification_result) {
-            if (mobile_apis::Result::UNSUPPORTED_RESOURCE ==
-                verification_result) {
+            if (mobile_apis::Result::UNSUPPORTED_RESOURCE
+                == verification_result) {
               request_soft_buttons[i].erase(strings::image);
               flag_unsuported_resource = true;
-            } else  {
+            } else {
               return mobile_apis::Result::INVALID_DATA;
             }
           }
@@ -1870,7 +2228,7 @@ bool MessageHelper::PrintSmartObject(const smart_objects::SmartObject& object) {
       break;
     }
     case NsSmartDeviceLink::NsSmartObjects::SmartType_Map: {
-      std::set < std::string > keys = object.enumerate();
+      std::set<std::string> keys = object.enumerate();
 
       for (std::set<std::string>::const_iterator key = keys.begin();
            key != keys.end(); key++) {
