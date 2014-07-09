@@ -1060,6 +1060,15 @@
 
 <!-- End of IVI part-->
 
+<enum name="AppPriority">
+  <element name="EMERGENCY"/>
+  <element name="NAVIGATION"/>
+  <element name="VOICE_COMMUNICATION"/>
+  <element name="COMMUNICATION"/>
+  <element name="NORMAL"/>
+  <element name="NONE"/>
+</enum>
+
 <!-- Policies -->
 <enum name="UpdateResult">
     <element name="UP_TO_DATE"/>
@@ -1872,6 +1881,9 @@
       <param name="appID" type="Integer" mandatory="true">
         <description>ID of deactivated application.</description>
       </param>
+      <param name="priority" type="Common.AppPriority" mandatory="false">
+        <description>Send to HMI so that it can coordinate order of requests/notifications correspondingly.</description>
+      </param>
     </function>
     <function name="ActivateApp" messagetype="response">
     </function>
@@ -1912,6 +1924,9 @@
       <param name="resume" type="Boolean" mandatory="false">
         <description>The information about resumption application. </description>
       </param>
+      <param name="priority" type="Common.AppPriority" mandatory="false">
+        <description>Send to HMI so that it can coordinate order of requests/notifications correspondingly.</description>
+      </param>
     </function>
     <function name="OnAppUnregistered" messagetype="notification">
       <description>Issued by SDL to notify HMI about application unregistered. Application then to be removed from application list; all data connected with application has to be cleared up.</description>
@@ -1945,6 +1960,7 @@
     </function>
     <!-- Policies -->
 
+    <!-- SyncP RPC-->
     <function name="OnSystemRequest" messagetype="notification" >
       <description>
         An asynchronous request from the system for specific data from the device or the cloud or response to a request from the device or cloud
@@ -1974,6 +1990,45 @@
         <description>ID of application that requested this RPC.</description>
       </param>
     </function>
+    <function name="SystemRequest" messagetype="request">
+      <description>An asynchronous request from the device; binary data can be included in hybrid part of message for some requests (such as Authentication requests)</description>
+      <param name="requestType" type="Common.RequestType" mandatory="true">
+          <description>The type of system request.</description>
+      </param>
+      <param name="fileName" type="String" maxlength="255" minlength="1" mandatory="true">
+          <description>The path to file.</description>
+      </param>
+      <param name="appID" type="String" maxlength="50" minlength="1" mandatory="false">
+        <description>ID of application that requested this RPC.</description>
+      </param>
+    </function>
+    <function name="SystemRequest" messagetype="response">
+    </function>
+    <function name="PolicyUpdate" messagetype="request">
+      <description>
+        From: SDL
+        To: SYNCP Manager
+        Asks SYNCP Manager to send given Policy Table snapshot to the backend
+      </description>
+      <param name="file" type="String" minlength="1" maxlength="255" mandatory="true">
+        <description>
+          Location of policy table snapshot
+        </description>
+      </param>
+      <param name="timeout" type="Integer" minvalue="0" maxvalue="65535" mandatory="true">
+        <description>
+          Send attempt timeout in seconds
+        </description>
+      </param>
+      <param name="retry" type="Integer" minvalue="0" maxvalue="65535" array="true" minsize="1" maxsize="5" mandatory="true">
+        <description>
+          Array of delays to wait after failed atempts
+        </description>
+      </param>
+    </function>
+    <function name="PolicyUpdate" messagetype="response">
+    </function>
+    <!-- End of SyncP RPC-->
 
     <function name="OnSDLClose" messagetype="notification">
       <description>SDL must notify HMI about finish working application</description>
@@ -1989,6 +2044,12 @@
     </param>
     <param name="length" type="Integer" minvalue="0" maxvalue="100000000000" mandatory="false">
       <description>Optional length in bytes for resuming partial data chunks</description>
+    </param>
+
+    <param name="fileSize" type="Integer" minvalue="0" maxvalue="100000000000" mandatory="false">
+      <description>Full Size of file. sends in first OnPutFile notification if file is splited
+		     	   into many PutFiles
+	  </description>
     </param>
 
     <param name="FileName" type="String" maxlength="255" mandatory="true">
@@ -2014,20 +2075,6 @@
     </param>
    </function>
 
-   <function name="SystemRequest" messagetype="request">
-    <description>An asynchronous request from the device; binary data can be included in hybrid part of message for some requests (such as Authentication requests)</description>
-    <param name="requestType" type="Common.RequestType" mandatory="true">
-        <description>The type of system request.</description>
-    </param>
-    <param name="fileName" type="String" maxlength="255" minlength="1" mandatory="true">
-        <description>The path to file.</description>
-    </param>
-    <param name="appID" type="String" maxlength="50" minlength="1" mandatory="false">
-      <description>ID of application that requested this RPC.</description>
-    </param> 
-   </function>
-   <function name="SystemRequest" messagetype="response">
-   </function>
 <!-- Policies -->
   <function name="GetSystemInfo" messagetype="request">
     <description>Request from SDL to HMI to obtain information about head unit system.</description>
@@ -2575,7 +2622,6 @@
   </function>
   <function name="SetAppIcon" messagetype="response">
   </function>
-  
   <function name="SetDisplayLayout" messagetype="request">
     <param name="displayLayout" type="String" maxlength="500" mandatory="true">
       <description>
@@ -2587,7 +2633,6 @@
       <description>ID of application related to this RPC.</description>
     </param>
   </function>
-  
   <function name="SetDisplayLayout" messagetype="response">
     <param name="displayCapabilities" type="Common.DisplayCapabilities" mandatory="false">
       <description>See DisplayCapabilities</description>
@@ -3527,6 +3572,9 @@
         <description>If app permissions were reduced (isAppPermissionsRevoked == true), then this array specifies list of removed permissions. </description>
       </param>
     <param name="isAppRevoked" type="Boolean" mandatory="true"/>
+    <param name="priority" type="Common.AppPriority" mandatory="false">
+        <description>Send to HMI so that it can coordinate order of requests/notifications correspondingly.</description>
+      </param>
   </function>
 
   <function name="GetUserFriendlyMessage" messagetype="request" scope="internal">
@@ -3555,24 +3603,26 @@
       <param name="source" type="Common.ConsentSource" mandatory="true"/>
     </function>
 
-    <function name="OnReceivedPolicyUpdate" messagetype="notificatoin">
+    <!-- SyncP RPC-->
+    <function name="OnReceivedPolicyUpdate" messagetype="notification">
       <description>
         From: SYNCP Manager
         To: SDL
         Notification sent to SDL when SYNCP Manager receives and decrypts updated policy table
-      </descrtiption>
+      </description>
       <param name="policyfile" type="String" minlength="1" maxlength="255" mandatory="true">
         <description>Location of decrypted policy table Json file on target</description>
       </param>
     </function>
 
-    <function name="OnPolicyUpdate" messagetype="notificatoin">
+    <function name="OnPolicyUpdate" messagetype="notification">
       <description>
         From: SYNCP Manager
         To: SDL
         Notifies SDL to supply a new "PolicyUpdate" request with more recent snapshot data
-      </descrtiption>
+      </description>
     </function>
+    <!-- End of SyncP RPC-->
 
     <function name="GetListOfPermissions"  messagetype="request">
       <description>Request from HMI to SDL to get list of permissions for app. If no app specified - list of permissions for all apps.</description>
@@ -3610,34 +3660,14 @@
       <param name="appUnauthorized" type="Boolean" mandatory="false">
         <description>When present and set to true (should be if present) then this means that application was not authorized (nickname check failed.)</description>
       </param>
+      <param name="priority" type="Common.AppPriority" mandatory="false">
+        <description>Send to HMI so that it can coordinate order of requests/notifications correspondingly.</description>
+      </param>
     </function>
 
   <function name="OnSDLConsentNeeded" messagetype="notification">
     <description>Send from SDL to HMI to notify that data consent is needed for device either because PT update or Retry strategy.</description>
     <param name="device" type="Common.DeviceInfo" mandatory="true"/>
-  </function>
-
-  <function name="PolicyUpdate" massagetype="request">
-    <description>
-      From: SDL
-      To: SYNCP Manager
-      Asks SYNCP Manager to send given Policy Table snapshot to the backend
-    </description>
-    <param name="file" type="String" minlength="1" maxlength="255" mandatory="true">
-      <description>
-        Location of policy table snapshot
-      </description>
-    </param>
-    <param name="timeout" type="Integer" minvalue="0" maxvalue="65535" mandatory="true">
-      <description>
-        Send attempt timeout in seconds
-      </description>
-    </param>
-    <param name="retry" type="Integer" minvalue="0" maxvalue="65535" array="true" minsize="1" maxsize="5" mandatory="true">
-      <description>
-        Array of delays to wait after failed atempts
-      </description>
-    </param>
   </function>
 
   <function name="UpdateSDL" messagetype="request">
@@ -3673,7 +3703,7 @@
       <param name="service" type="Integer" minvalue="0" maxvalue="100" mandatory="true"/>
     </function>
     <function name="GetURLS" messagetype="response" scope="internal">
-      <param name="urls" type="Common.ServiceInfo" array="true" mandatory="false" minsize="1" maxsize="100" maxlength="500"/>
+      <param name="urls" type="Common.ServiceInfo" array="true" mandatory="false" minsize="1" maxsize="100"/>
     </function>
 </interface>
 </interfaces>
