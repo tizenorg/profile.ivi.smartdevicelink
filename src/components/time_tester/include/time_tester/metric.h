@@ -30,21 +30,17 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "transport_manager_metric.h"
-#include "json/json.h"
-#include "json_keys.h"
-#include "application_manager/smart_object_keys.h"
+#ifndef SRC_COMPONENTS_TIME_TESTER_INCLUDE_TIME_TESTER_MECTRIC_H_
+#define SRC_COMPONENTS_TIME_TESTER_INCLUDE_TIME_TESTER_MECTRIC_H_
+
+#include <string>
 
 namespace time_tester {
 
-std::string TransportManagerMectic::GetStyledString() {
-  Json::Value result;
-  result[strings::logger] = "TransportManager";
-  result[strings::begin] =
-      Json::Int64(date_time::DateTime::getuSecs(message_metric->begin));
-  result[strings::end] =
-      Json::Int64(date_time::DateTime::getuSecs(message_metric->end));
-  result[strings::data_size] = static_cast<uint32_t>(message_metric->data_size);
-  return result.toStyledString();
-}
+class Metric {
+  public:
+    virtual std::string GetStyledString() = 0;
+    virtual ~Metric(){}
+};
 }  // namespace time_tester
+#endif  // SRC_COMPONENTS_TIME_TESTER_INCLUDE_TIME_TESTER_MECTRIC_H_

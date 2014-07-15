@@ -1,4 +1,5 @@
-/*
+/**
+ *
  * Copyright (c) 2014, Ford Motor Company
  * All rights reserved.
  *
@@ -30,21 +31,21 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "transport_manager_metric.h"
-#include "json/json.h"
-#include "json_keys.h"
-#include "application_manager/smart_object_keys.h"
+#ifndef SRC_COMPONENTS_TIME_TESTER_INCLUDE_TIME_TESTER_JSON_KEYS_H_
+#define SRC_COMPONENTS_TIME_TESTER_INCLUDE_TIME_TESTER_JSON_KEYS_H_
 
 namespace time_tester {
+  namespace strings {
+    const char logger[] = "logger";
+    const char begin[] = "begin";
+    const char end[] = "end";
+    const char data_size[] = "data_size";
+    const char message_id[] = "message_id";
+    const char session_id[] = "session_id";
+    const char correlation_id[] = "correlation_id";
+    const char connection_key[] = "connection_key";
 
-std::string TransportManagerMectic::GetStyledString() {
-  Json::Value result;
-  result[strings::logger] = "TransportManager";
-  result[strings::begin] =
-      Json::Int64(date_time::DateTime::getuSecs(message_metric->begin));
-  result[strings::end] =
-      Json::Int64(date_time::DateTime::getuSecs(message_metric->end));
-  result[strings::data_size] = static_cast<uint32_t>(message_metric->data_size);
-  return result.toStyledString();
+
+  }
 }
-}  // namespace time_tester
+#endif  // SRC_COMPONENTS_TIME_TESTER_INCLUDE_TIME_TESTER_JSON_KEYS_H_

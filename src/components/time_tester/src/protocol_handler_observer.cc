@@ -30,21 +30,41 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "transport_manager_metric.h"
-#include "json/json.h"
-#include "json_keys.h"
-#include "application_manager/smart_object_keys.h"
+#include "protocol_handler_observer.h"
+#include "utils/date_time.h"
+#include "protocol_handler_metric.h"
+#include "time_manager.h"
 
 namespace time_tester {
 
-std::string TransportManagerMectic::GetStyledString() {
-  Json::Value result;
-  result[strings::logger] = "TransportManager";
-  result[strings::begin] =
-      Json::Int64(date_time::DateTime::getuSecs(message_metric->begin));
-  result[strings::end] =
-      Json::Int64(date_time::DateTime::getuSecs(message_metric->end));
-  result[strings::data_size] = static_cast<uint32_t>(message_metric->data_size);
-  return result.toStyledString();
+CREATE_LOGGERPTR_GLOBAL(logger_, "Utils")
+
+ProtocolHandlerObserver::ProtocolHandlerObserver(TimeManager *time_manager):
+  time_manager_(time_manager) {
 }
-}  // namespace time_tester
+
+void ProtocolHandlerObserver::StartMessageProcess(uint32_t message_id) {
+  if (message_id == 0) {
+    return;
+  }
+  if (time_starts.find(message_id) != time_starts.end()) {
+    LOG4CXX_INFO(logger_, "Message ID already wait for stop processing" << message_id);
+    return;
+  }
+  time_starts[message_id] = date_time::DateTime::getCurrentTime();
+}
+
+void ProtocolHandlerObserver::EndMessageProcess(utils::SharedPtr<MessageMetric> m) {
+  uint32_t message_id = m->message_id;
+  std::map<uint32_t, TimevalStruct>::const_iterator it = time_starts.find(message_id);
+  if (it == time_starts.end()) {
+    LOG4CXX_WARN(logger_, "Cant find start time for message" << message_id);
+    return;
+  }
+  m->begin= time_starts[message_id];
+  m->end = date_time::DateTime::getCurrentTime();
+  ProtocolHandlerMectic* metric = new ProtocolHandlerMectic();
+  metric->message_metric = m;
+  time_manager_->SendMetric(metric);
+}
+}  //namespace time_tester
