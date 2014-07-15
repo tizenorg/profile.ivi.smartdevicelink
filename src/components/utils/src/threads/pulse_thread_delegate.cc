@@ -37,12 +37,7 @@
 
 namespace threads {
 
-namespace {
-
-log4cxx::LoggerPtr logger_ =
-  log4cxx::LoggerPtr(log4cxx::Logger::getLogger("threads::PulseThreadDelegate"));
-
-}  // anonimous namespace
+CREATE_LOGGERPTR_GLOBAL(logger_, "threads::PulseThreadDelegate")
 
 PulseThreadDelegate::PulseThreadDelegate() : run_(false) {
   LOG4CXX_TRACE(logger_, "Creating QNX channel");
@@ -84,7 +79,12 @@ void PulseThreadDelegate::threadMain() {
         }
       }
       else {
-        LOG4CXX_WARN(logger_, "Error occured while waiting for pulse on QNX channel " << chid_);
+        if (run_) {
+          LOG4CXX_WARN(logger_, "Error occured while waiting for pulse on QNX channel " << chid_);
+        }
+        else {
+          LOG4CXX_INFO(logger_, "QNX channel " << chid_ << " is apparently destroyed");
+        }
       }
     }
   }
