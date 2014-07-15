@@ -67,6 +67,7 @@
 #include "application_manager/commands/hmi/on_exit_all_applications_notification.h"
 #include "application_manager/commands/hmi/on_exit_application_notification.h"
 #include "application_manager/commands/hmi/on_put_file_notification.h"
+#include "application_manager/commands/hmi/on_resume_audio_source_notification.h"
 #include "application_manager/commands/hmi/on_ignition_cycle_over_notification.h"
 #include "application_manager/commands/hmi/on_system_info_changed_notification.h"
 #include "application_manager/commands/hmi/get_system_info_request.h"
@@ -228,7 +229,6 @@
 #include "application_manager/commands/hmi/on_navi_tbt_client_state_notification.h"
 #include "application_manager/commands/hmi/on_button_event_notification.h"
 #include "application_manager/commands/hmi/on_button_press_notification.h"
-#include "application_manager/commands/hmi/on_show_notification.h"
 #include "application_manager/commands/hmi/on_vi_vehicle_data_notification.h"
 #include "application_manager/commands/hmi/on_ui_keyboard_input_notification.h"
 #include "application_manager/commands/hmi/on_ui_touch_event_notification.h"
@@ -256,13 +256,11 @@
 #include "application_manager/commands/hmi/on_policy_update.h"
 #include "application_manager/commands/hmi/get_urls.h"
 #include "application_manager/commands/hmi/get_urls_response.h"
+#include "application_manager/commands/hmi/on_device_state_changed_notification.h"
 
 namespace application_manager {
 
-#ifdef ENABLE_LOG
-log4cxx::LoggerPtr HMICommandFactory::logger_ = log4cxx::LoggerPtr(
-      log4cxx::Logger::getLogger("ApplicationManager"));
-#endif // ENABLE_LOG
+CREATE_LOGGERPTR_GLOBAL(logger_, "ApplicationManager")
 
 CommandSharedPtr HMICommandFactory::CreateCommand(
   const MessageSharedPtr& message) {
@@ -1907,10 +1905,6 @@ CommandSharedPtr HMICommandFactory::CreateCommand(
       break;
     }
 #endif // #ifdef HMI_DBUS_API
-    case hmi_apis::FunctionID::UI_ShowNotification: {
-      command.reset(new commands::OnShowNotification(message));
-      break;
-    }
     case hmi_apis::FunctionID::Navigation_OnTBTClientState: {
       command.reset(new commands::OnNaviTBTClientStateNotification(message));
       break;
@@ -1975,6 +1969,10 @@ CommandSharedPtr HMICommandFactory::CreateCommand(
       command.reset(new commands::OnPutFileNotification(message));
       break;
     }
+    case hmi_apis::FunctionID::BasicCommunication_OnResumeAudioSource: {
+      command.reset(new commands::OnResumeAudioSourceNotification(message));
+      break;
+    }
     case hmi_apis::FunctionID::UI_SetDisplayLayout: {
       if (is_response) {
         command.reset(new commands::UiSetDisplayLayoutResponse(message));
@@ -2017,6 +2015,10 @@ CommandSharedPtr HMICommandFactory::CreateCommand(
     }
     case hmi_apis::FunctionID::SDL_OnPolicyUpdate: {
       command.reset(new commands::OnPolicyUpdate(message));
+      break;
+    }
+    case hmi_apis::FunctionID::SDL_OnDeviceStateChanged: {
+      command.reset(new commands::OnDeviceStateChangedNotification(message));
       break;
     }
   }

@@ -30,34 +30,27 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <string>
-#include "application_manager/commands/hmi/on_received_policy_update.h"
-#include "application_manager/policies/policy_handler.h"
-#include "utils/file_system.h"
+#include "application_manager/commands/hmi/on_resume_audio_source_notification.h"
+#include "interfaces/MOBILE_API.h"
 
 namespace application_manager {
 
 namespace commands {
 
-OnReceivedPolicyUpdate::OnReceivedPolicyUpdate(const MessageSharedPtr& message)
-  : NotificationFromHMI(message) {
+OnResumeAudioSourceNotification::OnResumeAudioSourceNotification(
+    const MessageSharedPtr& message)
+    : NotificationToHMI(message) {
 }
 
-OnReceivedPolicyUpdate::~OnReceivedPolicyUpdate() {
+OnResumeAudioSourceNotification::~OnResumeAudioSourceNotification() {
 }
 
-void OnReceivedPolicyUpdate::Run() {
-  LOG4CXX_INFO(logger_, "OnReceivedPolicyUpdate::Run");
-  const std::string& file_path =
-    (*message_)[strings::msg_params][hmi_notification::policyfile].asString();
-  policy::BinaryMessage file_content;
-  if (!file_system::ReadBinaryFile(file_path, file_content)) {
-    LOG4CXX_ERROR(logger_, "Failed to read Update file.");
-    return;
-  }
-  policy::PolicyHandler::instance()->ReceiveMessageFromSDK(file_path, file_content);
+void OnResumeAudioSourceNotification::Run() {
+  LOG4CXX_INFO(logger_, "OnResumeAudioSourceNotification::Run");
+  SendNotification();
 }
 
 }  // namespace commands
 
 }  // namespace application_manager
+

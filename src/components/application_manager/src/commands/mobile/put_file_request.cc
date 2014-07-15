@@ -116,7 +116,7 @@ void PutFileRequest::Run() {
   // Policy table update in json format is currently to be received via PutFile
   // TODO(PV): after latest discussion has to be changed
   if (mobile_apis::FileType::JSON == file_type_) {
-    policy::PolicyHandler::instance()->ReceiveMessageFromSDK(binary_data);
+    policy::PolicyHandler::instance()->ReceiveMessageFromSDK(sync_file_name_, binary_data);
   }
 
   offset_ = 0;
@@ -153,7 +153,7 @@ void PutFileRequest::Run() {
         ApplicationManagerImpl::instance()->GetAvailableSpaceForApp(application->name()));
 
     file_path = profile::Profile::instance()->app_storage_folder();
-    file_path += "/" + application->name();
+    file_path += "/" + application->folder_name();
 
     if (binary_data.size() >
       ApplicationManagerImpl::instance()->GetAvailableSpaceForApp(application->name())) {

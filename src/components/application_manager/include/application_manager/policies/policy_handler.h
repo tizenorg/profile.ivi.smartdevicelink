@@ -59,22 +59,19 @@ class PolicyHandler : public utils::Singleton<PolicyHandler>,
  public:
   virtual ~PolicyHandler();
   PolicyManager* LoadPolicyLibrary();
-  PolicyManager* LoadPolicyLibrary(const std::string& path);
   PolicyManager* policy_manager() const {
     return policy_manager_;
   }
   bool InitPolicyTable();
   bool RevertPolicyTable();
   bool SendMessageToSDK(const BinaryMessage& pt_string);
-  bool ReceiveMessageFromSDK(const BinaryMessage& pt_string);
+  bool ReceiveMessageFromSDK(const std::string& file,
+                             const BinaryMessage& pt_string);
   bool UnloadPolicyLibrary();
   void OnPTExchangeNeeded();
   void OnPermissionsUpdated(const std::string& policy_app_id,
-                            const Permissions& permissions);
-  /**
-   * @brief Checks, if policy update is necessary for application
-   */
-  void CheckAppPolicyState(const std::string& application_id);
+                            const Permissions& permissions,
+                            const HMILevel& default_hmi);
 
   /**
    * Lets client to notify PolicyHandler that more kilometers expired
@@ -176,7 +173,7 @@ class PolicyHandler : public utils::Singleton<PolicyHandler>,
    * application
    * @param policy_app_id Application id
    */
-  void OnCurrentDeviceIdUpdateRequired(const std::string& policy_app_id);
+    std::string OnCurrentDeviceIdUpdateRequired(const std::string& policy_app_id);
 
   /**
    * @brief Set parameters from OnSystemInfoChanged to policy table
@@ -200,6 +197,12 @@ class PolicyHandler : public utils::Singleton<PolicyHandler>,
   virtual void OnSystemInfoUpdateRequired();
 
   /**
+   * Removes device
+   * @param device_id id of device
+   */
+  void RemoveDevice(const std::string& device_id);
+
+  /**
    * Adds statistics info
    * @param type type of info
    */
@@ -216,6 +219,8 @@ class PolicyHandler : public utils::Singleton<PolicyHandler>,
    * @return Application id or 0, if there are no applications registered
    */
   uint32_t GetAppIdForSending();
+
+  std::string GetAppName(const std::string& policy_app_id);
 
  protected:
   /**
@@ -257,11 +262,11 @@ class PolicyHandler : public utils::Singleton<PolicyHandler>,
   PolicyManager* policy_manager_;
   void* dl_handle_;
   AppIds last_used_app_ids_;
-  static log4cxx::LoggerPtr logger_;
   threads::Thread retry_sequence_;
   sync_primitives::Lock retry_sequence_lock_;
   PTExchangeHandler* exchange_handler_;
   utils::SharedPtr<PolicyEventObserver> event_observer_;
+  bool on_ignition_check_done_;
 
   /**
    * @brief Contains device handles, which were sent for user consent to HMI
@@ -274,6 +279,11 @@ class PolicyHandler : public utils::Singleton<PolicyHandler>,
    * Used for limiting device consent request per PTS/PTU session
    */
   bool is_exchange_in_progress_;
+
+  /**
+   * @brief Holds device ids, which were unpaired
+   */
+  DeviceIds unpaired_device_ids_;
 
   inline PolicyManager* CreateManager();
 

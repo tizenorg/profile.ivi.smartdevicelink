@@ -30,34 +30,45 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <string>
-#include "application_manager/commands/hmi/on_received_policy_update.h"
-#include "application_manager/policies/policy_handler.h"
-#include "utils/file_system.h"
+#ifndef SRC_COMPONENTS_APPLICATION_MANAGER_INCLUDE_APPLICATION_MANAGER_COMMANDS_HMI_ON_RESUME_AUDIO_SOURCE_NOTIFICATION_H_
+#define SRC_COMPONENTS_APPLICATION_MANAGER_INCLUDE_APPLICATION_MANAGER_COMMANDS_HMI_ON_RESUME_AUDIO_SOURCE_NOTIFICATION_H_
+
+#include "application_manager/commands/hmi/notification_to_hmi.h"
+#include "application_manager/application_impl.h"
 
 namespace application_manager {
 
 namespace commands {
 
-OnReceivedPolicyUpdate::OnReceivedPolicyUpdate(const MessageSharedPtr& message)
-  : NotificationFromHMI(message) {
-}
+/**
+ * @brief OnResumeAudioSourceNotification command class
+ **/
+class OnResumeAudioSourceNotification : public NotificationToHMI {
+ public:
+  /**
+   * @brief OnResumeAudioSourceNotification class constructor
+   *
+   * @param message Incoming SmartObject message
+   **/
+  explicit OnResumeAudioSourceNotification(const MessageSharedPtr& message);
 
-OnReceivedPolicyUpdate::~OnReceivedPolicyUpdate() {
-}
+  /**
+   * @brief OnResumeAudioSourceNotification class destructor
+   **/
+  virtual ~OnResumeAudioSourceNotification();
 
-void OnReceivedPolicyUpdate::Run() {
-  LOG4CXX_INFO(logger_, "OnReceivedPolicyUpdate::Run");
-  const std::string& file_path =
-    (*message_)[strings::msg_params][hmi_notification::policyfile].asString();
-  policy::BinaryMessage file_content;
-  if (!file_system::ReadBinaryFile(file_path, file_content)) {
-    LOG4CXX_ERROR(logger_, "Failed to read Update file.");
-    return;
-  }
-  policy::PolicyHandler::instance()->ReceiveMessageFromSDK(file_path, file_content);
-}
+  /**
+   * @brief Execute command
+   **/
+  virtual void Run();
+
+ private:
+
+  DISALLOW_COPY_AND_ASSIGN(OnResumeAudioSourceNotification);
+};
 
 }  // namespace commands
 
 }  // namespace application_manager
+
+#endif  // SRC_COMPONENTS_APPLICATION_MANAGER_INCLUDE_APPLICATION_MANAGER_COMMANDS_HMI_ON_RESUME_AUDIO_SOURCE_NOTIFICATION_H_

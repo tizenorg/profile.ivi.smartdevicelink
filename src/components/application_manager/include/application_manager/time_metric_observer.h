@@ -30,34 +30,30 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <string>
-#include "application_manager/commands/hmi/on_received_policy_update.h"
-#include "application_manager/policies/policy_handler.h"
-#include "utils/file_system.h"
+#ifndef SRC_COMPONENTS_APPLICATION_MANAGER_INCLUDE_APPLICATION_MANAGER_TIME_METRIC_OBSERVER_H_
+#define SRC_COMPONENTS_APPLICATION_MANAGER_INCLUDE_APPLICATION_MANAGER_TIME_METRIC_OBSERVER_H_
 
+
+#include "smart_objects/smart_object.h"
+#include "application_manager/smart_object_keys.h"
+#include "json/json.h"
+#include "utils/shared_ptr.h"
+#include "utils/date_time.h"
+
+namespace smart_objects = NsSmartDeviceLink::NsSmartObjects;
 namespace application_manager {
 
-namespace commands {
+class AMMetricObserver {
+ public:
+  struct MessageMetric {
+    TimevalStruct begin;
+    TimevalStruct end;
+    utils::SharedPtr<smart_objects::SmartObject> message;
+  };
+  typedef utils::SharedPtr<MessageMetric> MessageMetricSharedPtr;
 
-OnReceivedPolicyUpdate::OnReceivedPolicyUpdate(const MessageSharedPtr& message)
-  : NotificationFromHMI(message) {
-}
-
-OnReceivedPolicyUpdate::~OnReceivedPolicyUpdate() {
-}
-
-void OnReceivedPolicyUpdate::Run() {
-  LOG4CXX_INFO(logger_, "OnReceivedPolicyUpdate::Run");
-  const std::string& file_path =
-    (*message_)[strings::msg_params][hmi_notification::policyfile].asString();
-  policy::BinaryMessage file_content;
-  if (!file_system::ReadBinaryFile(file_path, file_content)) {
-    LOG4CXX_ERROR(logger_, "Failed to read Update file.");
-    return;
-  }
-  policy::PolicyHandler::instance()->ReceiveMessageFromSDK(file_path, file_content);
-}
-
-}  // namespace commands
-
-}  // namespace application_manager
+  virtual void OnMessage(MessageMetricSharedPtr) = 0;
+  virtual ~AMMetricObserver(){}
+};
+}  // application_manager
+#endif  // SRC_COMPONENTS_APPLICATION_MANAGER_INCLUDE_APPLICATION_MANAGER_USAGE_STATISTICS_H_

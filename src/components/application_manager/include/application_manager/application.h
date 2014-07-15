@@ -390,8 +390,11 @@ class Application : public virtual InitialApplicationData,
     virtual bool has_been_activated() const = 0;
 
     virtual const Version& version() const = 0;
+    virtual void set_hmi_application_id(uint32_t hmi_app_id) = 0;
+    virtual uint32_t hmi_app_id() const = 0;
     virtual uint32_t app_id() const = 0;
     virtual const std::string& name() const = 0;
+    virtual const std::string folder_name() const = 0;
     virtual bool is_media_application() const = 0;
     virtual const mobile_api::HMILevel::eType& hmi_level() const = 0;
     virtual const uint32_t put_file_in_none_count() const = 0;
@@ -421,8 +424,9 @@ class Application : public virtual InitialApplicationData,
     virtual uint32_t get_grammar_id() const = 0 ;
     virtual void set_grammar_id(uint32_t value) = 0;
 
-    virtual void set_protocol_version(ProtocolVersion protocol_version) = 0;
-    virtual ProtocolVersion protocol_version() = 0;
+    virtual void set_protocol_version(
+        const ProtocolVersion& protocol_version) = 0;
+    virtual ProtocolVersion protocol_version() const = 0;
 
     virtual bool AddFile(AppFile& file) = 0;
     virtual const AppFilesMap& getAppFiles() const = 0;

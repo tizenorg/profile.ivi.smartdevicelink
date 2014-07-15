@@ -30,34 +30,43 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <string>
-#include "application_manager/commands/hmi/on_received_policy_update.h"
-#include "application_manager/policies/policy_handler.h"
-#include "utils/file_system.h"
+#ifndef SRC_COMPONENTS_APPLICATION_MANAGER_INCLUDE_APPLICATION_MANAGER_COMMANDS_HMI_ON_DEVICE_STATE_CHANGED_NOTIFICATION_H_
+#define SRC_COMPONENTS_APPLICATION_MANAGER_INCLUDE_APPLICATION_MANAGER_COMMANDS_HMI_ON_DEVICE_STATE_CHANGED_NOTIFICATION_H_
+
+#include "application_manager/commands/hmi/notification_from_hmi.h"
 
 namespace application_manager {
 
 namespace commands {
 
-OnReceivedPolicyUpdate::OnReceivedPolicyUpdate(const MessageSharedPtr& message)
-  : NotificationFromHMI(message) {
-}
+/**
+ * @brief OnDeviceStateChangedNotification command class
+ **/
+class OnDeviceStateChangedNotification : public NotificationFromHMI {
+  public:
+    /**
+     * @brief OnDeviceStateChangedNotification class constructor
+     *
+     * @param message Incoming SmartObject message
+     **/
+    explicit OnDeviceStateChangedNotification(const MessageSharedPtr& message);
 
-OnReceivedPolicyUpdate::~OnReceivedPolicyUpdate() {
-}
+    /**
+     * @brief OnDeviceStateChangedNotification class destructor
+     **/
+    virtual ~OnDeviceStateChangedNotification();
 
-void OnReceivedPolicyUpdate::Run() {
-  LOG4CXX_INFO(logger_, "OnReceivedPolicyUpdate::Run");
-  const std::string& file_path =
-    (*message_)[strings::msg_params][hmi_notification::policyfile].asString();
-  policy::BinaryMessage file_content;
-  if (!file_system::ReadBinaryFile(file_path, file_content)) {
-    LOG4CXX_ERROR(logger_, "Failed to read Update file.");
-    return;
-  }
-  policy::PolicyHandler::instance()->ReceiveMessageFromSDK(file_path, file_content);
-}
+    /**
+     * @brief Execute command
+     **/
+    virtual void Run();
+
+  private:
+    DISALLOW_COPY_AND_ASSIGN(OnDeviceStateChangedNotification);
+};
 
 }  // namespace commands
 
 }  // namespace application_manager
+
+#endif  // SRC_COMPONENTS_APPLICATION_MANAGER_INCLUDE_APPLICATION_MANAGER_COMMANDS_HMI_ON_DEVICE_STATE_CHANGED_NOTIFICATION_H_

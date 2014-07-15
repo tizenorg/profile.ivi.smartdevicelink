@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014, Ford Motor Company
+ * Copyright (c) 2013, Ford Motor Company
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,34 +30,41 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <string>
-#include "application_manager/commands/hmi/on_received_policy_update.h"
+#include "application_manager/commands/hmi/on_device_state_changed_notification.h"
 #include "application_manager/policies/policy_handler.h"
-#include "utils/file_system.h"
+#include "application_manager/message_helper.h"
+#include "interfaces/HMI_API.h"
 
 namespace application_manager {
 
 namespace commands {
 
-OnReceivedPolicyUpdate::OnReceivedPolicyUpdate(const MessageSharedPtr& message)
+OnDeviceStateChangedNotification::OnDeviceStateChangedNotification(
+  const MessageSharedPtr& message)
   : NotificationFromHMI(message) {
 }
 
-OnReceivedPolicyUpdate::~OnReceivedPolicyUpdate() {
+OnDeviceStateChangedNotification::~OnDeviceStateChangedNotification() {
 }
 
-void OnReceivedPolicyUpdate::Run() {
-  LOG4CXX_INFO(logger_, "OnReceivedPolicyUpdate::Run");
-  const std::string& file_path =
-    (*message_)[strings::msg_params][hmi_notification::policyfile].asString();
-  policy::BinaryMessage file_content;
-  if (!file_system::ReadBinaryFile(file_path, file_content)) {
-    LOG4CXX_ERROR(logger_, "Failed to read Update file.");
-    return;
+void OnDeviceStateChangedNotification::Run() {
+  LOG4CXX_INFO(logger_, "OnDeviceStateChangedNotification::Run");
+
+  if ((*message_)[strings::msg_params]["deviceState"]
+      == hmi_apis::Common_DeviceState::UNPAIRED) {
+    std::string device_id = (*message_)[strings::msg_params]["deviceInternalId"]
+                            .asString();
+    if (device_id.empty()) {
+      if ((*message_)[strings::msg_params].keyExists("deviceId")) {
+        device_id = MessageHelper::GetDeviceMacAddressForHandle(
+                      (*message_)[strings::msg_params]["deviceId"]["id"].asInt());
+      }
+    }
+    policy::PolicyHandler::instance()->RemoveDevice(device_id);
   }
-  policy::PolicyHandler::instance()->ReceiveMessageFromSDK(file_path, file_content);
 }
 
 }  // namespace commands
 
 }  // namespace application_manager
+

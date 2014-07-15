@@ -41,7 +41,7 @@ namespace application_manager {
 namespace commands {
 
 OnAppPermissionConsentNotification::OnAppPermissionConsentNotification(const MessageSharedPtr& message)
-  : NotificationFromHMI(message) {
+    : NotificationFromHMI(message) {
 }
 
 OnAppPermissionConsentNotification::~OnAppPermissionConsentNotification() {
@@ -57,8 +57,8 @@ void OnAppPermissionConsentNotification::Run() {
   if (msg_params.keyExists(strings::app_id)) {
     uint32_t connection_key = msg_params[strings::app_id].asUInt();
     ApplicationSharedPtr app =
-      application_manager::ApplicationManagerImpl::instance()
-      ->application(connection_key);
+        application_manager::ApplicationManagerImpl::instance()
+        ->application(connection_key);
 
     if (app.valid()) {
       permission_consent.policy_app_id = app->mobile_app_id()->asString();
@@ -75,18 +75,18 @@ void OnAppPermissionConsentNotification::Run() {
     smart_objects::SmartArray* user_consent =
       msg_params["consentedFunctions"].asArray();
 
-    smart_objects::SmartArray::const_iterator it = user_consent->begin();
-    smart_objects::SmartArray::const_iterator it_end = user_consent->end();
-    for (; it != it_end; ++it) {
-      policy::FunctionalGroupPermission permissions;
-      permissions.group_id = (*it)["id"].asInt();
-      permissions.group_alias = (*it)["name"].asString();
-      if ((*it).keyExists("allowed")) {
-        permissions.state = (*it)["allowed"].asBool() ? policy::kAllowed :
-                            policy::kDisallowed;
-      } else {
-        permissions.state = policy::kUndefined;
-      }
+  smart_objects::SmartArray::const_iterator it = user_consent->begin();
+  smart_objects::SmartArray::const_iterator it_end = user_consent->end();
+  for (; it != it_end; ++it) {
+    policy::FunctionalGroupPermission permissions;
+    permissions.group_id = (*it)["id"].asInt();
+    permissions.group_alias = (*it)["name"].asString();
+    if ((*it).keyExists("allowed")) {
+      permissions.state = (*it)["allowed"].asBool() ? policy::kGroupAllowed :
+                                                      policy::kGroupDisallowed;
+    } else {
+      permissions.state = policy::kGroupUndefined;
+    }
 
       permission_consent.group_permissions.push_back(permissions);
     }
