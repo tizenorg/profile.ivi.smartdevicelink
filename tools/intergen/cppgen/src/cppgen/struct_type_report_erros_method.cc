@@ -1,5 +1,4 @@
-/**
- * Copyright (c) 2014, Ford Motor Company
+/* Copyright (c) 2014, Ford Motor Company
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,63 +29,48 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "cppgen/struct_type_is_valid_method.h"
-
-#include <ostream>
+#include "cppgen/struct_type_report_erros_method.h"
 
 #include "cppgen/naming_convention.h"
-#include "cppgen/generator_preferences.h"
 #include "model/composite_type.h"
 #include "utils/safeformat.h"
+#include "utils/string_utils.h"
 
-using std::endl;
 using typesafe_format::strmfmt;
 
 namespace codegen {
 
-StructTypeIsValidMethod::StructTypeIsValidMethod(const Struct* strct)
-    : CppFunction(strct->name(), "is_valid", "bool", kConst),
-      strct_(strct) {
+StructTypeReportErrosMethod::StructTypeReportErrosMethod(const Struct* strct)
+  : CppFunction(strct->name(), "ReportErrors", "void", kConst),
+    strct_(strct) {
+  Add(Parameter("report__", "rpc::ValidationReport*"));
 }
 
-StructTypeIsValidMethod::~StructTypeIsValidMethod() {
-}
-
-void StructTypeIsValidMethod::DefineBody(std::ostream* os) const {
+void StructTypeReportErrosMethod::DefineBody(std::ostream* os) const {
   if (strct_->frankenstruct()) {
-    strmfmt(*os, "if (!Frankenbase::{0}()) return false;\n",
-            name_);
+    strmfmt(*os, "Frankenbase::{0}({1});\n",
+            name_, parameters_[0].name);
+  } else {
+    *os << "if (struct_empty()) {\n";
+    {
+      Indent ind(*os);
+      strmfmt(*os, "rpc::CompositeType::ReportErrors({0});\n", parameters_[0].name);
+    }
+    *os << "}\n";
   }
   const Struct::FieldsList& fields = strct_->fields();
-  bool struct_can_be_valid_empty = true;
   for (size_t i = 0; i != fields.size(); ++i) {
-    if (fields[i].is_mandatory()) {
-      struct_can_be_valid_empty = false;
+    const Struct::Field& field = fields[i];
+    strmfmt(*os, "if (!{0}.is_valid()) {\n", AvoidKeywords(field.name()));
+    {
+      Indent ind(*os);
+      strmfmt(*os, "{0}.ReportErrors(&{2}->ReportSubobject(\"{1}\"));\n",
+              AvoidKeywords(field.name()),
+              field.name(),
+              parameters_[0].name);
     }
+    *os << "}\n";
   }
-  if (struct_can_be_valid_empty) {
-    *os << "if (struct_empty()) return initialization_state__ == kInitialized;\n";
-  }
-  for (size_t i = 0; i != fields.size(); ++i) {
-    strmfmt(*os, "if (!{0}.is_valid()) return false;\n",
-            AvoidKeywords(fields[i].name()));
-  }
-  *os << "return "<< func_names::kAdditionalValidation << "();\n";
 }
 
-StructTypeAdditionalValidationMethod::StructTypeAdditionalValidationMethod(
-    const Struct* strct)
-    : CppFunction(strct->name(), func_names::kAdditionalValidation, "bool",
-                  kConst),
-      strct_(strct) {
-}
-
-StructTypeAdditionalValidationMethod::~StructTypeAdditionalValidationMethod() {
-}
-
-void StructTypeAdditionalValidationMethod::DefineBody(std::ostream* os) const {
-  *os << "return true;" << endl;
-}
-
-}
-// namespace codegen
+} // namespace cppgen

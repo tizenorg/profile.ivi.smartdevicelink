@@ -1,5 +1,4 @@
-/**
- * Copyright (c) 2014, Ford Motor Company
+/* Copyright (c) 2014, Ford Motor Company
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,23 +29,17 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef STRUCT_TYPE_FROM_JSON_METHOD_H_
-#define STRUCT_TYPE_FROM_JSON_METHOD_H_
+#ifndef CPPGEN_STRUCT_TYPE_REPORT_ERROS_METHOD_H
+#define CPPGEN_STRUCT_TYPE_REPORT_ERROS_METHOD_H
 
 #include "cppgen/cpp_function.h"
 
 namespace codegen {
 class Struct;
 
-/*
- * Generates struct constructor that assigns fields values taking them from
- * parsed json tree
- */
-class StructTypeFromJsonConstructor : public CppStructConstructor {
+class StructTypeReportErrosMethod: public CppFunction {
  public:
-  StructTypeFromJsonConstructor(const Struct* strct,
-                                const std::string& base_class_name);
-  ~StructTypeFromJsonConstructor();
+  StructTypeReportErrosMethod(const Struct* strct);
  private:
   // CppFunction pure virtual methods implementation
   virtual void DefineBody(std::ostream* os) const;
@@ -55,19 +48,6 @@ class StructTypeFromJsonConstructor : public CppStructConstructor {
   const Struct* strct_;
 };
 
-/*
- * Generates struct method that serializes the struct fields into json tree.
- */
-class StructTypeToJsonMethod : public CppFunction {
- public:
-  StructTypeToJsonMethod(const Struct* strct);
-  ~StructTypeToJsonMethod();
- private:
-  // CppFunction pure virtual methods implementation
-  virtual void DefineBody(std::ostream* os) const;
- private:
-  const Struct* strct_;
-};
-}  // namespace codegen
+} // namespace codegen
 
-#endif /* STRUCT_TYPE_FROM_JSON_METHOD_H_ */
+#endif // CPPGEN_STRUCT_TYPE_REPORT_ERROS_METHOD_H
