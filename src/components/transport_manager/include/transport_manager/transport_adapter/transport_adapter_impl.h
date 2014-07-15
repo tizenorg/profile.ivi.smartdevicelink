@@ -1,7 +1,5 @@
-/**
- * \file transport_adapter_impl.h
- * \brief TransportAdapterImpl class header file.
- * Copyright (c) 2013, Ford Motor Company
+/*
+ * Copyright (c) 2014, Ford Motor Company
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,10 +35,9 @@
 
 #include <queue>
 #include <set>
+#include <map>
 #include <memory>
 #include <string>
-
-#include "utils/logger.h"
 
 #include "transport_manager/transport_adapter/transport_adapter.h"
 #include "transport_manager/transport_adapter/transport_adapter_controller.h"
@@ -310,6 +307,14 @@ class TransportAdapterImpl : public TransportAdapter,
                              const ConnectError& error);
 
   /**
+   * @brief Remove specified device and all its connections
+   * @param device_handle Device unique identifier.
+   * @param error Error class that contains details of this error situation.
+   */
+  virtual void DeviceDisconnected(const DeviceUID& device_handle,
+                                  const DisconnectDeviceError& error);
+
+  /**
    * @brief Delete specified connection from the container(map) of connections
    *and launch event in the device adapter listener.
    *
@@ -374,6 +379,20 @@ class TransportAdapterImpl : public TransportAdapter,
    */
   virtual std::string DeviceName(const DeviceUID& device_id) const;
 
+  /**
+   * @brief Setup observer for time metric.
+   *
+   * @param observer - pointer to observer
+   */
+  void SetTimeMetricObserver(TMMetricObserver* observer);
+
+  /**
+   * @brief Return Time metric observer
+   *
+   * @param return pointer to Time metric observer
+   */
+  virtual TMMetricObserver* GetTimeMetricObserver();
+
  protected:
 
   /**
@@ -411,6 +430,12 @@ class TransportAdapterImpl : public TransportAdapter,
    * @return Error information about connecting applications on device
    */
   TransportAdapter::Error ConnectDevice(DeviceSptr device);
+
+  /**
+   * @brief Remove specified device
+   * @param device_handle Device unique identifier.
+   */
+  void RemoveDevice(const DeviceUID& device_handle);
 
   /**
    * @brief Listener for device adapter notifications.
@@ -488,14 +513,13 @@ class TransportAdapterImpl : public TransportAdapter,
    * @brief Pointer to the factory of connections initiated from client.
    */
   ClientConnectionListener* client_connection_listener_;
+
+  /**
+   * @brief Pointer to time metric observer
+   */
+  TMMetricObserver* metric_observer_;
 };
-
-#ifdef ENABLE_LOG
-extern log4cxx::LoggerPtr logger_;
-#endif // ENABLE_LOG
-
 }  // namespace transport_adapter
 }  // namespace transport_manager
-
 #endif  // #ifndef \
         // SRC_COMPONENTS_TRANSPORT_MANAGER_INCLUDE_TRANSPORT_MANAGER_transport_adapter_IMPL_H_

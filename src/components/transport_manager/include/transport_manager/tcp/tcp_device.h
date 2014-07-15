@@ -46,7 +46,6 @@
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <pthread.h>
 
 namespace transport_manager {
 namespace transport_adapter {
