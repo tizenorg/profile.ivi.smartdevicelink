@@ -1,6 +1,6 @@
 /**
- * \file usb_device_scanner.h
- * \brief UsbDeviceScanner class header file.
+ * \file usb_aoa_adapter.h
+ * \brief UsbAoaAdapter class header file.
  *
  * Copyright (c) 2013, Ford Motor Company
  * All rights reserved.
@@ -33,46 +33,32 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SRC_COMPONENTS_TRANSPORT_MANAGER_INCLUDE_TRANSPORT_MANAGER_USB_DEVICE_SCANNER_H_
-#define SRC_COMPONENTS_TRANSPORT_MANAGER_INCLUDE_TRANSPORT_MANAGER_USB_DEVICE_SCANNER_H_
+#ifndef SRC_COMPONENTS_TRANSPORT_MANAGER_INCLUDE_TRANSPORT_MANAGER_USB_USB_AOA_ADAPTER_H_
+#define SRC_COMPONENTS_TRANSPORT_MANAGER_INCLUDE_TRANSPORT_MANAGER_USB_USB_AOA_ADAPTER_H_
 
-#include <list>
-
-#include <pthread.h>
-
-#include "transport_manager/transport_adapter/device_scanner.h"
+#include "transport_manager/transport_adapter/transport_adapter_impl.h"
 #include "transport_manager/usb/common.h"
 
 namespace transport_manager {
-
 namespace transport_adapter {
 
-class UsbDeviceScanner : public DeviceScanner, public UsbDeviceListener {
+class UsbAoaAdapter : public TransportAdapterImpl {
  public:
-  UsbDeviceScanner(class TransportAdapterController* controller);
-  virtual ~UsbDeviceScanner();
+  UsbAoaAdapter();
+  virtual ~UsbAoaAdapter();
 
  protected:
-  virtual TransportAdapter::Error Init();
-  virtual TransportAdapter::Error Scan();
-  virtual void Terminate();
+  virtual DeviceType GetDeviceType() const;
   virtual bool IsInitialised() const;
-  virtual void OnDeviceArrived(PlatformUsbDevice* device);
-  virtual void OnDeviceLeft(PlatformUsbDevice* device);
+  virtual TransportAdapter::Error Init();
+  virtual bool ToBeAutoConnected(DeviceSptr device) const;
 
  private:
-  void UpdateList();
-  void TurnIntoAccessoryMode(PlatformUsbDevice* device);
-  void SupportedDeviceFound(PlatformUsbDevice* device);
-
-  TransportAdapterController* controller_;
-
-  typedef std::list<PlatformUsbDevice*> Devices;
-  Devices devices_;
-  pthread_mutex_t devices_mutex_;
+  bool is_initialised_;
+  UsbHandlerSptr usb_handler_;
 };
 
-}  // namespace
-}  // namespace
+}  // namespace transport_adapter
+}  // namespace transport_manager
 
-#endif  // SRC_COMPONENTS_TRANSPORT_MANAGER_INCLUDE_TRANSPORT_MANAGER_USB_DEVICE_SCANNER
+#endif  // SRC_COMPONENTS_TRANSPORT_MANAGER_INCLUDE_TRANSPORT_MANAGER_USB_USB_AOA_ADAPTER

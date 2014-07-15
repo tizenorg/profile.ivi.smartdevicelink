@@ -49,7 +49,6 @@
 #include <list>
 #include <algorithm>
 
-#include "utils/logger.h"
 #include "utils/timer_thread.h"
 #include "transport_manager/common.h"
 #include "transport_manager/transport_manager.h"
@@ -100,31 +99,15 @@ class TransportManagerImpl : public TransportManager {
     typedef utils::SharedPtr<TimerInternal> TimerInternalSharedPointer;
     TimerInternalSharedPointer timer;
     bool shutDown;
+    DeviceHandle device_handle_;
     int messages_count;
 
     ConnectionInternal(TransportManagerImpl* transport_manager,
                        TransportAdapter* transport_adapter,
                        const ConnectionUID& id, const DeviceUID& dev_id,
-                       const ApplicationHandle& app_id)
-        : transport_manager(transport_manager),
-          transport_adapter(transport_adapter),
-          timer(new TimerInternal(this, &ConnectionInternal::DisconnectFailedRoutine)),
-          shutDown(false),
-          messages_count(0) {
-            Connection::id = id;
-            Connection::device = dev_id;
-            Connection::application = app_id;
-    }
-
-    void DisconnectFailedRoutine() {
-      LOG4CXX_INFO(logger_, "Disconnection failed");
-      transport_manager->RaiseEvent(&TransportManagerListener::OnDisconnectFailed,
-                                    transport_manager->converter_.UidToHandle(device),
-                                    DisconnectDeviceError());
-      shutDown = false;
-      timer->stop();
-    }
-
+                       const ApplicationHandle& app_id,
+                       const DeviceHandle& device_handle);
+    void DisconnectFailedRoutine();
   };
  public:
 
@@ -250,7 +233,7 @@ class TransportManagerImpl : public TransportManager {
    *
    * @param observer - pointer to observer
    */
-  virtual void SetTimeMetricObserver(TMMetricObserver* observer);
+  void SetTimeMetricObserver(TMMetricObserver* observer);
 
   /**
    * @brief Constructor.
@@ -337,16 +320,7 @@ class TransportManagerImpl : public TransportManager {
   void EventListenerThread(void);
 
   /**
-   * \brief For logging.
-   */
-#ifdef ENABLE_LOG
-  static log4cxx::LoggerPtr logger_;
-#endif // ENABLE_LOG
-
-  /**
    * @brief store messages
-   *
-   * @param
    *
    * @see @ref components_transportmanager_client_connection_management
    **/
@@ -364,8 +338,6 @@ class TransportManagerImpl : public TransportManager {
 
   /**
    * @brief store events from comming device
-   *
-   * @param
    *
    * @see @ref components_transportmanager_client_connection_management
    **/
@@ -410,7 +382,7 @@ class TransportManagerImpl : public TransportManager {
    * @brief Flag that TM is initialized
    */
   bool is_initialized_;
-
+  TMMetricObserver* metric_observer_;
  private:
   /**
    * @brief Structure that contains conversion functions (Device ID -> Device
@@ -452,7 +424,6 @@ class TransportManagerImpl : public TransportManager {
    * Device ID)
    */
   Handle2GUIDConverter converter_;
-  TMMetricObserver* metric_observer_;
 
   explicit TransportManagerImpl(const TransportManagerImpl&);
   int connection_id_counter_;
