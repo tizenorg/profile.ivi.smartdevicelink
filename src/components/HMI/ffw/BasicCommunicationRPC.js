@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013, Ford Motor Company All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met: ·
  * Redistributions of source code must retain the above copyright notice, this
@@ -10,7 +10,7 @@
  * with the distribution. · Neither the name of the Ford Motor Company nor the
  * names of its contributors may be used to endorse or promote products derived
  * from this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -45,8 +45,6 @@ FFW.BasicCommunication = FFW.RPCObserver
 
 
         onPutFileSubscribeRequestID: -1,
-allowSDLFunctionalityRequestID: -1,
-
         onSystemErrorSubscribeRequestID: -1,
         onStatusUpdateSubscribeRequestID: -1,
         onAppPermissionChangedSubscribeRequestID: -1,
@@ -55,10 +53,11 @@ allowSDLFunctionalityRequestID: -1,
         onAppUnregisteredSubscribeRequestID: -1,
         onPlayToneSubscribeRequestID: -1,
         onSDLCloseSubscribeRequestID: -1,
-onSDLConsentNeededSubscribeRequestID: -1,
+        onSDLConsentNeededSubscribeRequestID: -1,
+        onResumeAudioSourceSubscribeRequestID: -1,
 
         onPutFileUnsubscribeRequestID: -1,
-onSystemErrorUnsubscribeRequestID: -1,
+        onSystemErrorUnsubscribeRequestID: -1,
         onStatusUpdateUnsubscribeRequestID: -1,
         onAppPermissionChangedUnsubscribeRequestID: -1,
         onFileRemovedUnsubscribeRequestID: -1,
@@ -66,7 +65,8 @@ onSystemErrorUnsubscribeRequestID: -1,
         onAppUnregisteredUnsubscribeRequestID: -1,
         onPlayToneUnsubscribeRequestID: -1,
         onSDLCloseUnsubscribeRequestID: -1,
-onSDLConsentNeededUnsubscribeRequestID: -1,
+        onSDLConsentNeededUnsubscribeRequestID: -1,
+        onResumeAudioSourceUnsubscribeRequestID: -1,
 
         // const
         onSystemErrorNotification: "SDL.OnSystemError",
@@ -78,7 +78,9 @@ onSDLConsentNeededUnsubscribeRequestID: -1,
         onAppUnregisteredNotification: "BasicCommunication.OnAppUnregistered",
         onPlayToneNotification: "BasicCommunication.PlayTone",
         onSDLCloseNotification: "BasicCommunication.OnSDLClose",
-onSDLConsentNeededNotification: "SDL.OnSDLConsentNeeded",
+        onSDLConsentNeededNotification: "SDL.OnSDLConsentNeeded",
+        onResumeAudioSourceNotification: "BasicCommunication.OnResumeAudioSource",
+
 
         /**
          * init object
@@ -116,7 +118,7 @@ onSDLConsentNeededNotification: "SDL.OnSDLConsentNeeded",
             // subscribe to notifications
             this.onPutFileSubscribeRequestID = this.client
                 .subscribeToNotification(this.onPutFileNotification);
-this.onSystemErrorSubscribeRequestID = this.client
+            this.onSystemErrorSubscribeRequestID = this.client
                 .subscribeToNotification(this.onSystemErrorNotification);
             this.onStatusUpdateSubscribeRequestID = this.client
                 .subscribeToNotification(this.onStatusUpdateNotification);
@@ -132,9 +134,10 @@ this.onSystemErrorSubscribeRequestID = this.client
                 .subscribeToNotification(this.onPlayToneNotification);
             this.onSDLCloseSubscribeRequestID = this.client
                 .subscribeToNotification(this.onSDLCloseNotification);
-this.onSDLConsentNeededSubscribeRequestID = this.client
+            this.onSDLConsentNeededSubscribeRequestID = this.client
                 .subscribeToNotification(this.onSDLConsentNeededNotification);
-
+            this.onResumeAudioSourceSubscribeRequestID = this.client
+                .subscribeToNotification(this.onResumeAudioSourceNotification);
         },
 
         /**
@@ -149,7 +152,7 @@ this.onSDLConsentNeededSubscribeRequestID = this.client
 
             this.onPutFileUnsubscribeRequestID = this.client
                 .unsubscribeFromNotification(this.onPutFileNotification);
-this.onSystemErrorUnsubscribeRequestID = this.client
+            this.onSystemErrorUnsubscribeRequestID = this.client
                 .unsubscribeFromNotification(this.onSystemErrorNotification);
             this.onStatusUpdateUnsubscribeRequestID = this.client
                 .unsubscribeFromNotification(this.onStatusUpdateNotification);
@@ -165,8 +168,10 @@ this.onSystemErrorUnsubscribeRequestID = this.client
                 .unsubscribeFromNotification(this.onPlayToneUpdatedNotification);
             this.onSDLCloseUnsubscribeRequestID = this.client
                 .unsubscribeFromNotification(this.onSDLCloseNotification);
-this.onSDLConsentNeededUnsubscribeRequestID = this.client
+            this.onSDLConsentNeededUnsubscribeRequestID = this.client
                 .unsubscribeFromNotification(this.onSDLConsentNeededNotification);
+            this.onResumeAudioSourceUnsubscribeRequestID = this.client
+                .unsubscribeFromNotification(this.onResumeAudioSourceNotification);
         },
 
         /**
@@ -196,8 +201,8 @@ this.onSDLConsentNeededUnsubscribeRequestID = this.client
 
                 if (response.id in SDL.SDLModel.userFriendlyMessagePull) {
                     var callbackObj = SDL.SDLModel.userFriendlyMessagePull[response.id];
-                    callbackObj.callback(response.result.message, callbackObj.appID);
-                    SDL.SDLModel.userFriendlyMessagePull.remove(response.id);
+                    callbackObj.callbackFunc(response.result.message, callbackObj.appID);
+                    delete SDL.SDLModel.userFriendlyMessagePull[response.id];
                 }
             }
 
@@ -230,15 +235,15 @@ this.onSDLConsentNeededUnsubscribeRequestID = this.client
 
                         this.GetListOfPermissions(appID);
 
-                        this.OnAppPermissionConsent(response.result.allowedFunctions, "GUI", appID);
+                        //this.OnAppPermissionConsent(response.result.allowedFunctions, "GUI", appID);
                     }
 
                     if (response.result.isAppPermissionsRevoked) {
 
-                        SDL.SettingsController.userFriendlyMessagePopUp();
+                        SDL.SettingsController.userFriendlyMessagePopUp(appID, response.result.appRevokedPermissions);
 
                         //deleted array
-                        SDL.SDLModel.setAppPermissions(params.appRevokedPermissions);
+                        SDL.SDLModel.setAppPermissions(response.result.appRevokedPermissions);
                     }
 
                     if (response.result.isAppRevoked) {
@@ -250,7 +255,17 @@ this.onSDLConsentNeededUnsubscribeRequestID = this.client
                         });
                     } else {
 
-                        SDL.SDLController.getApplicationModel(appID).turnOnSDL();
+                        SDL.SDLController.getApplicationModel(appID).deviceID = response.result.device ? response.result.device.id : null;
+
+                        if ( SDL.SDLAppController.model && SDL.SDLAppController.model.appID != appID) {
+                            SDL.States.goToStates('info.apps');
+                        }
+
+                        if (SDL.SDLModel.stateLimited == appID) {
+                            SDL.SDLModel.stateLimited = null;
+                        }
+
+                        SDL.SDLController.getApplicationModel(appID).turnOnSDL(appID);
                     }
 
                     delete SDL.SDLModel.activateAppRequestsList[response.id];
@@ -275,7 +290,12 @@ this.onSDLConsentNeededUnsubscribeRequestID = this.client
 
                 SDL.SDLModel.set('policyURLs', response.result.urls);
 
-                this.OnSystemRequest("PROPRIETARY", response.result.urls[0].policyAppId, SDL.SettingsController.policyUpdateFile, response.result.urls[0].url);
+                if (response.result.urls.length) {
+                    this.OnSystemRequest("PROPRIETARY", response.result.urls[0].policyAppId, SDL.SettingsController.policyUpdateFile, response.result.urls[0].url);
+                } else {
+                    this.OnSystemRequest("PROPRIETARY");
+                }
+
             }
         },
 
@@ -300,7 +320,7 @@ this.onSDLConsentNeededUnsubscribeRequestID = this.client
                 SDL.SDLModel.onFileRemoved(notification.params);
             }
 
-if (notification.method == this.onSystemErrorNotification) {
+            if (notification.method == this.onSystemErrorNotification) {
 
                 var message = "Undefined";
 
@@ -316,7 +336,6 @@ if (notification.method == this.onSystemErrorNotification) {
             if (notification.method == this.onStatusUpdateNotification) {
 
                 //SDL.PopUp.popupActivate(notification.status);
-
                 SDL.TTSPopUp.ActivateTTS(notification.params.status);
             }
 
@@ -342,11 +361,16 @@ if (notification.method == this.onSystemErrorNotification) {
             if (notification.method == this.onSDLCloseNotification) {
                 //notification handler method
             }
-if (notification.method == this.onSDLConsentNeededNotification) {
+            if (notification.method == this.onSDLConsentNeededNotification) {
 
                 //Show popUp
                 SDL.SettingsController.AllowSDLFunctionality(notification.params.device);
 
+            }
+            if (notification.method == this.onResumeAudioSourceNotification) {
+
+                SDL.SDLModel.stateLimited = notification.params.device;
+                SDL.VRPopUp.updateVR();
             }
         },
 
@@ -372,24 +396,23 @@ if (notification.method == this.onSDLConsentNeededNotification) {
                 if (request.method == "BasicCommunication.AllowDeviceToConnect") {
                     this.AllowDeviceToConnect(request.id, request.method, allow);
                 }
-                if (request.method == "BasicCommunication.UpdateAppList") {
-                    if (SDL.States.info.active) {
-                        SDL.SDLController
-                            .onGetAppList(request.params.applications);
-                    }
-                    this.sendBCResult(SDL.SDLModel.resultCode["SUCCESS"],
-                        request.id,
-                        request.method);
-                }
                 if (request.method == "BasicCommunication.UpdateDeviceList") {
                     SDL.SDLModel.onGetDeviceList(request.params);
                     this.sendBCResult(SDL.SDLModel.resultCode["SUCCESS"],
                         request.id,
                         request.method);
                 }
+                if (request.method == "BasicCommunication.UpdateAppList") {
+                    if (SDL.States.info.active) {
+                        SDL.SDLController.onGetAppList(request.params.applications);
+                    }
+                    this.sendBCResult(SDL.SDLModel.resultCode["SUCCESS"],
+                        request.id,
+                        request.method);
+                }
                 if (request.method == "BasicCommunication.SystemRequest") {
 
-                    this.OnReceivedPolicyUpdate(SDL.SettingsController.policyUpdateFile);
+                    this.OnReceivedPolicyUpdate(request.params.fileName);
 
                     SDL.SettingsController.policyUpdateFile = null;
 
@@ -403,12 +426,14 @@ if (notification.method == this.onSDLConsentNeededNotification) {
                         SDL.States.goToStates('info.apps');
                     }
 
-                    SDL.SDLModel.stateLimited = null;
+                    if (SDL.SDLModel.stateLimited == request.params.appID) {
+                        SDL.SDLModel.stateLimited = null;
+                    }
 
                     SDL.SDLController.getApplicationModel(request.params.appID).turnOnSDL(request.params.appID);
                     this.sendBCResult(SDL.SDLModel.resultCode["SUCCESS"], request.id, request.method);
                 }
-if (request.method == "BasicCommunication.GetSystemInfo") {
+                if (request.method == "BasicCommunication.GetSystemInfo") {
 
                     Em.Logger.log("BasicCommunication.GetSystemInfo Response");
 
@@ -580,7 +605,7 @@ if (request.method == "BasicCommunication.GetSystemInfo") {
 
         /**
          * send response from onRPCRequest
-         * 
+         *
          * @param {Number}
          *            resultCode
          * @param {Number}
@@ -717,7 +742,7 @@ if (request.method == "BasicCommunication.GetSystemInfo") {
 
         /**
          * send response from onRPCRequest
-         * 
+         *
          * @param {Number}
          *            id
          * @param {String}
@@ -776,7 +801,7 @@ if (request.method == "BasicCommunication.GetSystemInfo") {
 
         /**
          * Send request if application was activated
-         * 
+         *
          * @param {number} appID
          */
         OnAppActivated: function(appID) {
@@ -789,6 +814,31 @@ if (request.method == "BasicCommunication.GetSystemInfo") {
                 "method": "BasicCommunication.OnAppActivated",
                 "params": {
                     "appID": appID
+                }
+            };
+            this.client.send(JSONMessage);
+        },
+
+        /**
+         * Send request if device was unpaired from HMI
+         *
+         * @param {number} appID
+         */
+        OnDeviceStateChanged: function(elemet) {
+
+            Em.Logger.log("FFW.SDL.OnDeviceStateChanged");
+
+            // send notification
+            var JSONMessage = {
+                "jsonrpc": "2.0",
+                "method": "SDL.OnDeviceStateChanged",
+                "params": {
+                    "deviceState": "UNPAIRED",
+                    "deviceInternalId": "",
+                    "deviceId": {
+                        "name": elemet.deviceName,
+                        "id": elemet.deviceID
+                    }
                 }
             };
             this.client.send(JSONMessage);
@@ -855,7 +905,7 @@ if (request.method == "BasicCommunication.GetSystemInfo") {
         /**
          * Invoked by UI component when user switches to any functionality which
          * is not other mobile application.
-         * 
+         *
          * @params {String}
          * @params {Number}
          */
@@ -895,7 +945,7 @@ if (request.method == "BasicCommunication.GetSystemInfo") {
 
         /**
          * Used by HMI when User chooses to exit application.
-         * 
+         *
          * @params {Number}
          */
         ExitApplication: function(appID) {
@@ -916,7 +966,7 @@ if (request.method == "BasicCommunication.GetSystemInfo") {
 
         /**
          * Sent by HMI to SDL to close all registered applications.
-         * 
+         *
          * @params {String}
          */
         ExitAllApplications: function(reason) {
@@ -938,7 +988,7 @@ if (request.method == "BasicCommunication.GetSystemInfo") {
         /**
          * Response with params of the last one supports mixing audio (ie
          * recording TTS command and playing audio).
-         * 
+         *
          * @params {Number}
          */
         MixingAudioSupported: function(attenuatedSupported) {
@@ -962,7 +1012,7 @@ if (request.method == "BasicCommunication.GetSystemInfo") {
         /**
          * Response with Results by user/HMI allowing SDL functionality or
          * disallowing access to all mobile apps.
-         * 
+         *
          * @params {Number}
          */
         AllowAllApps: function(allowed) {
@@ -985,7 +1035,7 @@ if (request.method == "BasicCommunication.GetSystemInfo") {
 
         /**
          * Response with result of allowed application
-         * 
+         *
          * @params {Number}
          */
         AllowApp: function(request) {
@@ -1019,7 +1069,7 @@ if (request.method == "BasicCommunication.GetSystemInfo") {
 
         /**
          * Notifies if device was choosed
-         * 
+         *
          * @param {String}
          *            deviceName
          * @param {Number}
@@ -1045,7 +1095,7 @@ if (request.method == "BasicCommunication.GetSystemInfo") {
 
         /**
          * Send error response from onRPCRequest
-         * 
+         *
          * @param {Number}
          *            resultCode
          * @param {Number}

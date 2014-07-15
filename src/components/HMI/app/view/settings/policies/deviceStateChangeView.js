@@ -31,14 +31,14 @@
  * @version 1.0
  */
 
-SDL.DeviceConfigView = Em.ContainerView.create( {
+SDL.DeviceStateChangeView = Em.ContainerView.create( {
 
-    elementId: 'policies_settings_deviceConfig',
+    elementId: 'policies_settings_deviceStateChange',
 
     classNames: 'in_settings_separate_view',
 
     classNameBindings: [
-        'SDL.States.settings.policies.deviceConfig.active:active_state:inactive_state'
+        'SDL.States.settings.policies.deviceStateChange.active:active_state:inactive_state'
     ],
 
     childViews: [
@@ -46,18 +46,6 @@ SDL.DeviceConfigView = Em.ContainerView.create( {
         'listOfDevices',
         'label'
     ],
-
-    globalConfigurationValue: false,
-
-    globalConfigurationMessage: function() {
-        if (this.globalConfigurationValue === true) {
-            return "All devices Allowed";
-        } else if (this.globalConfigurationValue === false) {
-            return "All devices Not Allowed";
-        } else {
-            return "All devices manual Configuration";
-        }
-    }.property('this.globalConfigurationValue'),
 
     /**
      * Label in title
@@ -68,7 +56,7 @@ SDL.DeviceConfigView = Em.ContainerView.create( {
 
         classNames: 'label',
 
-        content: 'Choose devices to be allowed for SDL functionality:'
+        content: 'Choose devices to be Unpaired:'
     }),
 
     backButton: SDL.Button.extend( {
@@ -90,16 +78,6 @@ SDL.DeviceConfigView = Em.ContainerView.create( {
 
         this.listOfDevices.items = [];
 
-        this.listOfDevices.items.push({
-            type: SDL.Button,
-            params: {
-                action: 'allDeviceAccess',
-                target: 'SDL.SettingsController',
-                textBinding: 'SDL.DeviceConfigView.globalConfigurationMessage',
-                classNameBinding: 'SDL.DeviceConfigView.globalConfigurationValue:disabled'
-            }
-        });
-
         var dev = SDL.SDLModel.connectedDevices;
 
         for (var key in dev) {
@@ -109,11 +87,11 @@ SDL.DeviceConfigView = Em.ContainerView.create( {
                 this.listOfDevices.items.push({
                     type: SDL.Button,
                     params: {
-                        action: 'changeDeviceAccess',
-                        target: 'SDL.SettingsController',
-                        text: dev[key].allowed ? dev[key].name + " - Allowed" : dev[key].name + " - Not allowed",
-                        name: dev[key].name,
-                        id: dev[key].id
+                        action: 'OnDeviceStateChanged',
+                        target: 'FFW.BasicCommunication',
+                        text: dev[key].name,
+                        deviceName: dev[key].name,
+                        deviceID: dev[key].id
                     }
                 });
             }
