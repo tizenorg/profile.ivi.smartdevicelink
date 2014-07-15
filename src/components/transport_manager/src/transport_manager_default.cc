@@ -1,5 +1,8 @@
 /*
- * Copyright (c) 2014, Ford Motor Company
+ * \file transport_manager_default.cc
+ * \brief TransportManagerDefault class source file.
+ *
+ * Copyright (c) 2013, Ford Motor Company
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,6 +33,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "config_profile/profile.h"
+
 #include "transport_manager/transport_manager_default.h"
 #include "transport_manager/tcp/tcp_transport_adapter.h"
 
@@ -38,7 +43,11 @@
 #endif
 
 #ifdef USB_SUPPORT
-#include "transport_manager/usb/usb_adapter.h"
+#include "transport_manager/usb/usb_aoa_adapter.h"
+#endif
+
+#ifdef MME_SUPPORT
+#include "transport_manager/mme/mme_transport_adapter.h"
 #endif
 
 
@@ -48,14 +57,33 @@ int TransportManagerDefault::Init() {
   if (E_SUCCESS != TransportManagerImpl::Init()) {
     return E_TM_IS_NOT_INITIALIZED;
   }
-
+  transport_adapter::TransportAdapterImpl* ta;
 #ifdef BLUETOOTH_SUPPORT
-  AddTransportAdapter(new transport_adapter::BluetoothTransportAdapter);
+  ta = new transport_adapter::BluetoothTransportAdapter;
+  if (metric_observer_) {
+    ta->SetTimeMetricObserver(metric_observer_);
+  }
+  AddTransportAdapter(ta);
 #endif
-  const uint16_t kTcpAdapterPort = 12345;
-  AddTransportAdapter(new transport_adapter::TcpTransportAdapter(kTcpAdapterPort));
+  uint16_t port = profile::Profile::instance()->transport_manager_tcp_adapter_port();
+  ta = new transport_adapter::TcpTransportAdapter(port);
+  if (metric_observer_) {
+    ta->SetTimeMetricObserver(metric_observer_);
+  }
+  AddTransportAdapter(ta);
 #ifdef USB_SUPPORT
-  AddTransportAdapter(new transport_adapter::UsbAdapter);
+  ta = new transport_adapter::UsbAoaAdapter();
+  if (metric_observer_) {
+    ta->SetTimeMetricObserver(metric_observer_);
+  }
+  AddTransportAdapter(ta);
+#endif
+#ifdef MME_SUPPORT
+  ta = new transport_adapter::MmeTransportAdapter();
+  if (metric_observer_) {
+    ta->SetTimeMetricObserver(metric_observer_);
+  }
+  AddTransportAdapter(ta);
 #endif
 
   return E_SUCCESS;
