@@ -61,6 +61,7 @@
 
 // ----------------------------------------------------------------------------
 
+CREATE_LOGGERPTR_GLOBAL(logger, "appMain")
 namespace {
 
 const char kBrowser[] = "/usr/bin/chromium-browser";
@@ -71,30 +72,26 @@ const char kApplicationVersion[] = "Develop";
 
 #ifdef __QNX__
 bool Execute(std::string command, const char * const *) {
-  log4cxx::LoggerPtr logger = log4cxx::LoggerPtr(
-      log4cxx::Logger::getLogger("appMain"));
   if (system(command.c_str()) == -1) {
-    LOG4CXX_INFO(logger, "Can't start HMI!");
+    LOG4CXX_FATAL(logger, "Can't start HMI!");
     return false;
   }
   return true;
 }
 #else
 bool Execute(std::string file, const char * const * argv) {
-  log4cxx::LoggerPtr logger = log4cxx::LoggerPtr(
-      log4cxx::Logger::getLogger("appMain"));
   // Create a child process.
   pid_t pid_hmi = fork();
 
   switch (pid_hmi) {
     case -1: {  // Error
-      LOG4CXX_INFO(logger, "fork() failed!");
+      LOG4CXX_FATAL(logger, "fork() failed!");
       return false;
     }
     case 0: {  // Child process
       int32_t fd_dev0 = open("/dev/null", O_RDWR, S_IWRITE);
       if (0 > fd_dev0) {
-        LOG4CXX_WARN(logger, "Open dev0 failed!");
+        LOG4CXX_FATAL(logger, "Open dev0 failed!");
         return false;
       }
       // close input/output file descriptors.
@@ -129,12 +126,10 @@ bool Execute(std::string file, const char * const * argv) {
  * @return true if success otherwise false.
  */
 bool InitHmi() {
-log4cxx::LoggerPtr logger = log4cxx::LoggerPtr(
-                              log4cxx::Logger::getLogger("appMain"));
 
 struct stat sb;
 if (stat("hmi_link", &sb) == -1) {
-  LOG4CXX_INFO(logger, "File with HMI link doesn't exist!");
+  LOG4CXX_FATAL(logger, "File with HMI link doesn't exist!");
   return false;
 }
 
@@ -142,7 +137,7 @@ std::ifstream file_str;
 file_str.open("hmi_link");
 
 if (!file_str.is_open()) {
-  LOG4CXX_INFO(logger, "File with HMI link was not opened!");
+  LOG4CXX_FATAL(logger, "File with HMI link was not opened!");
   return false;
 }
 
@@ -159,7 +154,7 @@ LOG4CXX_INFO(logger,
 file_str.close();
 
 if (stat(hmi_link.c_str(), &sb) == -1) {
-  LOG4CXX_INFO(logger, "HMI index.html doesn't exist!");
+  LOG4CXX_FATAL(logger, "HMI index.html doesn't exist!");
   return false;
 }
 
@@ -177,12 +172,10 @@ if (stat(hmi_link.c_str(), &sb) == -1) {
  * @return true if success otherwise false.
  */
 bool InitHmi() {
-  log4cxx::LoggerPtr logger = log4cxx::LoggerPtr(
-      log4cxx::Logger::getLogger("appMain"));
   std::string kStartHmi = "./start_hmi.sh";
   struct stat sb;
   if (stat(kStartHmi.c_str(), &sb) == -1) {
-    LOG4CXX_INFO(logger, "HMI start script doesn't exist!");
+    LOG4CXX_FATAL(logger, "HMI start script doesn't exist!");
     return false;
   }
 
@@ -202,10 +195,7 @@ int32_t main(int32_t argc, char** argv) {
 
   // --------------------------------------------------------------------------
   // Logger initialization
-
-  log4cxx::LoggerPtr logger = log4cxx::LoggerPtr(
-                                log4cxx::Logger::getLogger("appMain"));
-  log4cxx::PropertyConfigurator::configure("log4cxx.properties");
+  INIT_LOGGER("log4cxx.properties");
 
   threads::Thread::SetNameForId(threads::Thread::CurrentId(), "MainThread");
 
@@ -232,8 +222,7 @@ int32_t main(int32_t argc, char** argv) {
 
   if (!main_namespace::LifeCycle::instance()->InitMessageSystem()) {
     main_namespace::LifeCycle::instance()->StopComponents();
-// without this line log4cxx threads continue using some instances destroyed by exit()
-    log4cxx::Logger::getRootLogger()->closeNestedAppenders();
+    DEINIT_LOGGER();
     exit(EXIT_FAILURE);
   }
   LOG4CXX_INFO(logger, "InitMessageBroker successful");
@@ -246,8 +235,7 @@ int32_t main(int32_t argc, char** argv) {
 #ifndef NO_HMI
       if (!InitHmi()) {
         main_namespace::LifeCycle::instance()->StopComponents();
-// without this line log4cxx threads continue using some instances destroyed by exit()
-        log4cxx::Logger::getRootLogger()->closeNestedAppenders();
+        DEINIT_LOGGER();
         exit(EXIT_FAILURE);
       }
       LOG4CXX_INFO(logger, "InitHmi successful");
