@@ -1,8 +1,5 @@
-/**
- * \file usb_connection_factory.cc
- * \brief UsbConnectionFactory class source file.
- *
- * Copyright (c) 2013, Ford Motor Company
+/*
+ * Copyright (c) 2014, Ford Motor Company
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,14 +34,18 @@
 #include "transport_manager/usb/usb_device.h"
 #include "transport_manager/transport_adapter/transport_adapter_impl.h"
 
-#if defined(__QNX__) || defined(__QNXNTO__)
+#if defined(__QNXNTO__)
 #include "transport_manager/usb/qnx/usb_connection.h"
 #else
 #include "transport_manager/usb/libusb/usb_connection.h"
 #endif
 
+#include "utils/logger.h"
+
 namespace transport_manager {
 namespace transport_adapter {
+
+CREATE_LOGGERPTR_GLOBAL(logger_, "TransportManager")
 
 UsbConnectionFactory::UsbConnectionFactory(
     TransportAdapterController* controller)
@@ -68,17 +69,19 @@ TransportAdapter::Error UsbConnectionFactory::CreateConnection(
 
   UsbDevice* usb_device = static_cast<UsbDevice*>(device.get());
   UsbConnection* usb_connection =
-      new UsbConnection(device_uid, app_handle, controller_, usb_handler_,
-                        usb_device->usb_device());
+    new UsbConnection(device_uid, app_handle, controller_, usb_handler_,
+      usb_device->usb_device());
   ConnectionSptr connection(usb_connection);
 
   controller_->ConnectionCreated(connection, device_uid, app_handle);
-  if (!usb_connection->Init()) {
+
+  if (usb_connection->Init()) {
+    LOG4CXX_INFO(logger_, "USB connection initialised");
+    return TransportAdapter::OK;
+  }
+  else {
     return TransportAdapter::FAIL;
   }
-  LOG4CXX_INFO(logger_, "Usb connection initialised");
-
-  return TransportAdapter::OK;
 }
 
 void UsbConnectionFactory::Terminate() {}

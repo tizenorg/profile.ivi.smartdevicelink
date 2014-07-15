@@ -1,6 +1,6 @@
 /**
- * \file platform_usb_device.cc
- * \brief QNX PlatformUsbDevice class source file.
+ * \file usb_aoa_adapter.cpp
+ * \brief UsbAoaAdapter class source file.
  *
  * Copyright (c) 2013, Ford Motor Company
  * All rights reserved.
@@ -33,47 +33,48 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "transport_manager/usb/qnx/platform_usb_device.h"
-#include "transport_manager/transport_adapter/transport_adapter_impl.h"
-
-#include "utils/logger.h"
+#include "transport_manager/usb/usb_aoa_adapter.h"
+#include "transport_manager/usb/usb_device_scanner.h"
+#include "transport_manager/usb/usb_connection_factory.h"
+#include "transport_manager/usb/common.h"
 
 namespace transport_manager {
 namespace transport_adapter {
 
-CREATE_LOGGERPTR_GLOBAL(logger_, "TransportManager")
+UsbAoaAdapter::UsbAoaAdapter()
+    : TransportAdapterImpl(new UsbDeviceScanner(this),
+                           new UsbConnectionFactory(this), 0),
+      is_initialised_(false),
+      usb_handler_(new UsbHandler()) {
+  static_cast<UsbDeviceScanner*>(device_scanner_)->SetUsbHandler(usb_handler_);
+  static_cast<UsbConnectionFactory*>(server_connection_factory_)
+      ->SetUsbHandler(usb_handler_);
+}
 
-PlatformUsbDevice::PlatformUsbDevice(
-    usbd_device_instance_t* instance, usbd_device* device,
-    const usbd_device_descriptor_t& device_descriptor)
-    : bus_number_(instance->path),
-      address_(instance->devno),
-      vendor_id_(instance->ident.vendor),
-      product_id_(instance->ident.device),
-      device_descriptor_(device_descriptor),
-      usbd_device_instance_(*instance),
-      usbd_device_(device) {}
+UsbAoaAdapter::~UsbAoaAdapter() {}
 
-std::string PlatformUsbDevice::GetDescString(uint8_t index) const {
-  char* str = usbd_string(usbd_device_, index, 0);
-  if (NULL == str) {
-    LOG4CXX_INFO(logger_, "Failed to get USB string descriptor");
-    return "";
+DeviceType UsbAoaAdapter::GetDeviceType() const { return "sdl-usb-aoa"; }
+
+bool UsbAoaAdapter::IsInitialised() const {
+  return is_initialised_ && TransportAdapterImpl::IsInitialised();
+}
+
+TransportAdapter::Error UsbAoaAdapter::Init() {
+  TransportAdapter::Error error = usb_handler_->Init();
+  if (error != TransportAdapter::OK) {
+    return error;
   }
-  return std::string(str);
+  error = TransportAdapterImpl::Init();
+  if (error != TransportAdapter::OK) {
+    return error;
+  }
+  is_initialised_ = true;
+  return TransportAdapter::OK;
 }
 
-std::string PlatformUsbDevice::GetManufacturer() const {
-  return GetDescString(device_descriptor_.iManufacturer);
+bool UsbAoaAdapter::ToBeAutoConnected(DeviceSptr device) const {
+  return true;
 }
 
-std::string PlatformUsbDevice::GetProductName() const {
-  return GetDescString(device_descriptor_.iProduct);
-}
-
-std::string PlatformUsbDevice::GetSerialNumber() const {
-  return GetDescString(device_descriptor_.iSerialNumber);
-}
-
-}  // namespace
-}  // namespace
+}  // namespace transport_adapter
+}  // namespace transport_manager
