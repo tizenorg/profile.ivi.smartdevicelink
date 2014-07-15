@@ -36,7 +36,6 @@
 #include <string>
 #include <vector>
 #include "policy/pt_representation.h"
-#include "utils/logger.h"
 #include "rpc_base/rpc_base.h"
 #include "policy_table_interface_base/types.h"
 
@@ -133,19 +132,16 @@ class SQLPTRepresentation : public virtual PTRepresentation {
 
     bool IsApplicationRevoked(const std::string& app_id) const;
     bool IsApplicationRepresented(const std::string& app_id) const;
-    bool IsDefaultPolicy(const std::string& app_id) const;
-    bool SetDefaultPolicy(const std::string& app_id);
+    virtual bool IsDefaultPolicy(const std::string& app_id) const;
+    virtual bool IsPredataPolicy(const std::string& app_id) const;
+    virtual bool SetDefaultPolicy(const std::string& app_id);
+    bool CleanupUnpairedDevices(const DeviceIds& device_ids);
 
-    dbms::SQLDatabase* db() const {
-      return db_;
-    }
-    static log4cxx::LoggerPtr logger() {
-      return logger_;
-    }
+    dbms::SQLDatabase* db() const;
+    virtual bool SetIsDefault(const std::string& app_id, bool is_default);
 
   private:
     static const std::string kDatabaseName;
-    static log4cxx::LoggerPtr logger_;
     dbms::SQLDatabase* db_;
 
     bool SaveRpcs(int64_t group_id, const policy_table::Rpc& rpcs);
@@ -156,7 +152,6 @@ class SQLPTRepresentation : public virtual PTRepresentation {
       const policy_table::NumberOfNotificationsPerMinute& notifications);
     bool SaveMessageType(const std::string& type);
     bool SaveLanguage(const std::string& code);
-    bool SetIsDefault(const std::string& app_id, bool is_default);
 };
 }  //  namespace policy
 

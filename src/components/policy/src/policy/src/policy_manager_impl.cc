@@ -39,14 +39,31 @@
 #include "policy/policy_manager_impl.h"
 #include "policy/policy_helper.h"
 #include "utils/file_system.h"
+#include "utils/logger.h"
 
 policy::PolicyManager* CreateManager() {
   return new policy::PolicyManagerImpl();
 }
 
+namespace {
+void CheckPreloadedGroups(policy_table::ApplicationParams& app_param) {
+
+}
+}
+
 namespace policy {
-log4cxx::LoggerPtr PolicyManagerImpl::logger_ = log4cxx::LoggerPtr(
-      log4cxx::Logger::getLogger("PolicyManagerImpl"));
+
+CREATE_LOGGERPTR_GLOBAL(logger_, "PolicyManagerImpl")
+
+#if defined(__QNXNTO__) and defined(GCOV_ENABLED)
+bool CheckGcov() {
+  LOG4CXX_ERROR(log4cxx::Logger::getLogger("appMain"),
+                "Attention! This application was built with unsupported "
+                "configuration (gcov + QNX). Use it at your own risk.");
+  return true;
+}
+bool check_gcov = CheckGcov();
+#endif
 
 PolicyManagerImpl::PolicyManagerImpl()
   : PolicyManager(),
@@ -134,11 +151,15 @@ utils::SharedPtr<policy_table::Table> PolicyManagerImpl::Parse(
   std::string json(pt_content.begin(), pt_content.end());
   Json::Value value;
   Json::Reader reader;
-  reader.parse(json.c_str(), value);
-  return new policy_table::Table(&value);
+  if (reader.parse(json.c_str(), value)) {
+    return new policy_table::Table(&value);
+  } else {
+    return 0;
+  }
 }
 
-bool PolicyManagerImpl::LoadPT(const BinaryMessage& pt_content) {
+bool PolicyManagerImpl::LoadPT(const std::string& file,
+                               const BinaryMessage& pt_content) {
   LOG4CXX_INFO(logger_, "LoadPTFromString of size " << pt_content.size());
 
   // Parse message into table struct
@@ -149,13 +170,18 @@ bool PolicyManagerImpl::LoadPT(const BinaryMessage& pt_content) {
     return false;
   }
 
+#if defined (EXTENDED_POLICY)
+  file_system::DeleteFile(file);
+#endif
+
   set_exchange_in_progress(false);
 
-  // Temporary disabled until correct json will be prepared
-  //  if (!table->is_valid()) {
-  //    LOG4CXX_WARN(logger_, "Parsed table is not valid.");
-  //    return false;
-  //  }
+  if (!pt_update->is_valid()) {
+    rpc::ValidationReport report("policy_table");
+    pt_update->ReportErrors(&report);
+    LOG4CXX_WARN(logger_, "Parsed table is not valid " << rpc::PrettyFormat(report));
+    return false;
+  }
 
   // Check and update permissions for applications, send notifications
   CheckPermissionsChanges(pt_update);
@@ -311,9 +337,28 @@ BinaryMessageSptr PolicyManagerImpl::RequestPTUpdate() {
   set_exchange_pending(false);
 
   Json::Value value = policy_table_snapshot_->ToJsonValue();
+
+  policy_table::ApplicationPolicies& apps = policy_table_snapshot_->policy_table.app_policies;
+  std::map<std::string,
+      rpc::Nullable<rpc::policy_table_interface_base::ApplicationParams>>::iterator it = apps.begin();
+  for (; apps.end() != it; ++it) {
+    if (policy_table_.pt_data()->IsDefaultPolicy(it->first)) {
+      printf("\n\t\t\t\tDefault policy of %s\n", it->first.c_str());
+      value["policy_table"]["app_policies"][it->first] = kDefaultId;
+      continue;
+    }
+    if (policy_table_.pt_data()->IsPredataPolicy(it->first)) {
+      printf("\n\t\t\t\tPredata policy of %s\n", it->first.c_str());
+      value["policy_table"]["app_policies"][it->first] = kPreDataConsentId;
+      continue;
+    }
+    Json::Value app_value = it->second.ToJsonValue();
+    value["policy_table"]["app_policies"][it->first] = app_value;
+  }
+
   Json::FastWriter writer;
   std::string message_string = writer.write(value);
-  LOG4CXX_INFO(logger_, "PT Snapshot " << message_string);
+  LOG4CXX_INFO(logger_, "\n\n\n\nPT Snapshot " << message_string << "\n\n\n");
   return new BinaryMessage(message_string.begin(), message_string.end());
 }
 
@@ -324,13 +369,8 @@ CheckPermissionResult PolicyManagerImpl::CheckPermissions(
     "CheckPermissions for " << app_id << " and rpc " << rpc << " for "
     << hmi_level << " level.");
 
-  const std::string device_id = GetCurrentDeviceId(app_id);
-  if (kDeviceHasNoConsent == GetUserConsentForDevice(device_id)) {
-    return policy_table_.pt_data()->CheckPermissions("pre_DataConsent",
-           hmi_level, rpc);
-  }
-
 #if defined (EXTENDED_POLICY)
+  const std::string device_id = GetCurrentDeviceId(app_id);
   // Get actual application group permission according to user consents
   std::vector<FunctionalGroupPermission> app_group_permissions;
   GetUserPermissionsForApp(device_id, app_id, app_group_permissions);
@@ -353,21 +393,31 @@ CheckPermissionResult PolicyManagerImpl::CheckPermissions(
                           app_group_permissions, rpc_permissions);
 
   CheckPermissionResult result;
+  // If RPC is present in list, but not found in allowed and userDisallowed ==
+  // disallowed both by backend and by user, which is default value for result
   if (rpc_permissions.end() == rpc_permissions.find(rpc)) {
+    // RPC not found in list == disallowed by backend
     return result;
+  }
+
+  // Check HMI level
+  if (rpc_permissions[rpc].hmi_permissions[kAllowedKey].end() !=
+      rpc_permissions[rpc].hmi_permissions[kAllowedKey].find(hmi_level)) {
+    // RPC found in allowed == allowed by backend and user
+    result.hmi_level_permitted = kRpcAllowed;
+  }
+
+  if (rpc_permissions[rpc].hmi_permissions[kUserDisallowedKey].end() !=
+      rpc_permissions[rpc].hmi_permissions[kUserDisallowedKey].find(hmi_level)) {
+    // RPC found in allowed == allowed by backend, but disallowed by user
+    result.hmi_level_permitted = kRpcUserDisallowed;
   }
 
   // Add parameters of RPC, if any
   result.list_of_allowed_params = new std::vector<PTString>();
-  std::copy(rpc_permissions[rpc].parameter_permissions["allowed"].begin(),
-            rpc_permissions[rpc].parameter_permissions["allowed"].end(),
+  std::copy(rpc_permissions[rpc].parameter_permissions[kAllowedKey].begin(),
+            rpc_permissions[rpc].parameter_permissions[kAllowedKey].end(),
             result.list_of_allowed_params->begin());
-
-  // Check HMI level
-  if (rpc_permissions[rpc].hmi_permissions["allowed"].end() !=
-      rpc_permissions[rpc].hmi_permissions["allowed"].find(hmi_level)) {
-    result.hmi_level_permitted = true;
-  }
 
   return result;
 #else
@@ -391,14 +441,33 @@ bool PolicyManagerImpl::ResetUserConsent() {
 
 void PolicyManagerImpl::CheckAppPolicyState(const std::string& application_id) {
   LOG4CXX_INFO(logger_, "CheckAppPolicyState");
+  const std::string device_id = GetCurrentDeviceId(application_id);
+  DeviceConsent device_consent  = GetUserConsentForDevice(device_id);
   if (!policy_table_.pt_data()->IsApplicationRepresented(application_id)) {
     LOG4CXX_INFO(
       logger_,
       "Setting default permissions for application id: " << application_id);
+#if defined (EXTENDED_POLICY)
+    if (kDeviceHasNoConsent == device_consent ||
+        kDeviceDisallowed == device_consent) {
+      PTExtRepresentation* pt_ext = dynamic_cast<PTExtRepresentation*>(policy_table_
+                                    .pt_data().get());
+      if (!pt_ext) {
+        LOG4CXX_WARN(logger_, "Can't cleanup unpaired devices.");
+        return;
+      }
+      pt_ext->SetPredataPolicy(application_id);
+    } else {
+      policy_table_.pt_data()->SetDefaultPolicy(application_id);
+    }
+#else
     policy_table_.pt_data()->SetDefaultPolicy(application_id);
+#endif
     SendNotificationOnPermissionsUpdated(application_id);
   } else {
-    if (!policy_table_.pt_data()->IsDefaultPolicy(application_id)) {
+    if (!policy_table_.pt_data()->IsDefaultPolicy(application_id)
+        || (kDeviceHasNoConsent != device_consent
+            && policy_table_.pt_data()->IsPredataPolicy(application_id))) {
       return;
     }
   }
@@ -412,7 +481,8 @@ void PolicyManagerImpl::CheckAppPolicyState(const std::string& application_id) {
   }
 }
 
-void PolicyManagerImpl::SendNotificationOnPermissionsUpdated(const std::string& application_id) {
+void PolicyManagerImpl::SendNotificationOnPermissionsUpdated(
+  const std::string& application_id) {
   const std::string device_id = GetCurrentDeviceId(application_id);
   if (device_id.empty()) {
     LOG4CXX_WARN(logger_, "Couldn't find device info for application id "
@@ -440,7 +510,33 @@ void PolicyManagerImpl::SendNotificationOnPermissionsUpdated(const std::string& 
                           notification_data);
 
   LOG4CXX_INFO(logger_, "Send notification for application_id:" << application_id);
-  listener()->OnPermissionsUpdated(application_id, notification_data);
+  std::string default_hmi;
+  PTExtRepresentation* pt_ext = dynamic_cast<PTExtRepresentation*>(policy_table_
+                                .pt_data().get());
+  if (!pt_ext) {
+    LOG4CXX_WARN(logger_, "Can't get default hmi level for " << application_id);
+    return;
+  }
+
+  pt_ext->GetDefaultHMI(application_id, &default_hmi);
+  listener()->OnPermissionsUpdated(application_id, notification_data,
+                                   default_hmi);
+}
+
+bool PolicyManagerImpl::CleanupUnpairedDevices(const DeviceIds& device_ids) {
+  LOG4CXX_INFO(logger_, "CleanupUnpairedDevices");
+#if defined (EXTENDED_POLICY)
+  PTExtRepresentation* pt_ext = dynamic_cast<PTExtRepresentation*>(policy_table_
+                                .pt_data().get());
+  if (!pt_ext) {
+    LOG4CXX_WARN(logger_, "Can't cleanup unpaired devices.");
+    return false;
+  }
+
+  return pt_ext->CleanupUnpairedDevices(device_ids);
+#else
+  return policy_table_.pt_data()->CleanupUnpairedDevices(device_ids);
+#endif
 }
 
 PolicyTableStatus PolicyManagerImpl::GetPolicyTableStatus() {
@@ -485,7 +581,6 @@ DeviceConsent PolicyManagerImpl::GetUserConsentForDevice(
   if (!list_of_permissions.empty()) {
     StringArray consented_groups;
     StringArray disallowed_groups;
-    // TODO(AOleynik): Change id to appropriate value (MAC with SHA-256)
     if (!pt_ext->GetUserPermissionsForDevice(device_id, &consented_groups,
         &disallowed_groups)) {
       return kDeviceDisallowed;
@@ -504,8 +599,7 @@ DeviceConsent PolicyManagerImpl::GetUserConsentForDevice(
       list_of_permissions.end(),
       consented_groups.begin(),
       consented_groups.end(),
-      std::inserter(to_be_consented_by_user,
-                    to_be_consented_by_user.begin()));
+      std::back_inserter(to_be_consented_by_user));
     if (to_be_consented_by_user.empty()) {
       return kDeviceAllowed;
     }
@@ -559,13 +653,27 @@ void PolicyManagerImpl::SetUserConsentForDevice(const std::string& device_id,
     disallowed_groups.push_back(list_of_permissions[0]);
   }
 
-  // TODO(AOleynik): Change id to appropriate value (MAC with SHA-256)
   if (!pt_ext->SetUserPermissionsForDevice(device_id, consented_groups,
       disallowed_groups)) {
     LOG4CXX_WARN(logger_, "Can't set user consent for device");
     return;
   }
 #endif
+}
+
+bool PolicyManagerImpl::ReactOnUserDevConsentForApp(const std::string app_id,
+    bool is_device_allowed) {
+#if defined (EXTENDED_POLICY)
+  // TODO(AOleynik): Check design for more convenient access to policy ext data
+  PTExtRepresentation* pt_ext = dynamic_cast<PTExtRepresentation*>(policy_table_
+                                .pt_data().get());
+  if (!pt_ext) {
+    LOG4CXX_WARN(logger_, "Can't set user consent for device");
+    return false;
+  }
+  return pt_ext->ReactOnUserDevConsentForApp(app_id, is_device_allowed);
+#endif
+  return true;
 }
 
 bool PolicyManagerImpl::GetInitialAppData(const std::string& application_id,
@@ -584,7 +692,6 @@ void PolicyManagerImpl::SetDeviceInfo(const std::string& device_id,
   PTExtRepresentation* pt_ext = dynamic_cast<PTExtRepresentation*>(policy_table_
                                 .pt_data().get());
   if (pt_ext) {
-    // TODO(AOleynik): Change id to appropriate value (MAC with SHA-256)
     if (!pt_ext->SetDeviceData(device_id, device_info.hardware,
                                device_info.firmware_rev, device_info.os,
                                device_info.os_ver, device_info.carrier,
@@ -632,8 +739,12 @@ void PolicyManagerImpl::SetUserConsentForApp(
     PrepareNotificationData(functional_groups, app_groups,
                             app_group_permissons, notification_data);
 
+    std::string default_hmi;
+    pt_ext->GetDefaultHMI(permissions.policy_app_id, &default_hmi);
+
     listener()->OnPermissionsUpdated(permissions.policy_app_id,
-                                     notification_data);
+                                     notification_data,
+                                     default_hmi);
   }
 #endif
 }
@@ -689,12 +800,9 @@ std::vector<UserFriendlyMessage> PolicyManagerImpl::GetUserFriendlyMessages(
   if (pt_ext) {
     return pt_ext->GetUserFriendlyMsg(message_code, language);
   }
-
+#endif
   // For basic policy
   return policy_table_.pt_data()->GetUserFriendlyMsg(message_code, language);
-#else
-  return std::vector<UserFriendlyMessage>(message_code.size());
-#endif
 }
 
 void PolicyManagerImpl::GetUserPermissionsForApp(
@@ -702,12 +810,110 @@ void PolicyManagerImpl::GetUserPermissionsForApp(
   std::vector<FunctionalGroupPermission>& permissions) {
   LOG4CXX_INFO(logger_, "GetUserPermissionsForApp");
 #if defined (EXTENDED_POLICY)
+  std::string app_id_to_check = policy_app_id;
+
+  DeviceConsent device_consent = GetUserConsentForDevice(device_id);
+  // Application is limited to pre_DataConsent permission until device is
+  // allowed by user
+  if (kDeviceHasNoConsent == device_consent ||
+      kDeviceDisallowed == device_consent) {
+    app_id_to_check = kPreDataConsentId;
+  }
+
   // TODO(AOleynik): Check design for more convenient access to policy ext data
   PTExtRepresentation* pt_ext = dynamic_cast<PTExtRepresentation*>(policy_table_
                                 .pt_data().get());
   // For extended policy
   if (pt_ext) {
-    pt_ext->GetUserPermissionsForApp(device_id, policy_app_id, permissions);
+    FunctionalIdType group_types;
+    if (!pt_ext->GetUserPermissionsForApp(device_id, app_id_to_check,
+                                          &group_types)) {
+      LOG4CXX_WARN(logger_, "Can't get user permissions for app "
+                   << policy_app_id);
+      return;
+    }
+
+    FunctionalGroupIDs all_groups = group_types[kTypeGeneral];
+    // If application is limited to pre_Dataconsent only related groups are
+    // allowed
+    FunctionalGroupIDs allowed_groups =
+      app_id_to_check == kPreDataConsentId ?
+      group_types[kTypeGeneral] :
+      group_types[kTypeAllowed];
+    FunctionalGroupIDs disallowed_groups = group_types[kTypeDisallowed];
+    FunctionalGroupIDs preconsented_groups = group_types[kTypePreconsented];
+    // If application is limited to pre_DataConsent - no default groups
+    // permissions should be used
+    FunctionalGroupIDs default_groups =
+      app_id_to_check == kPreDataConsentId ?
+      FunctionalGroupIDs() : group_types[kTypeDefault];
+
+    std::sort(all_groups.begin(), all_groups.end());
+    std::sort(allowed_groups.begin(), allowed_groups.end());
+    std::sort(disallowed_groups.begin(), disallowed_groups.end());
+    std::sort(preconsented_groups.begin(), preconsented_groups.end());
+    std::sort(default_groups.begin(), default_groups.end());
+
+    // Find groups with undefinded consent
+    FunctionalGroupIDs no_preconsented;
+    std::set_difference(all_groups.begin(), all_groups.end(),
+                        preconsented_groups.begin(), preconsented_groups.end(),
+                        std::back_inserter(no_preconsented));
+    FunctionalGroupIDs no_allowed_preconsented;
+    std::set_difference(no_preconsented.begin(), no_preconsented.end(),
+                        allowed_groups.begin(), allowed_groups.end(),
+                        std::back_inserter(no_allowed_preconsented));
+    FunctionalGroupIDs no_allowed_preconsented_default;
+    std::set_difference(no_allowed_preconsented.begin(),
+                        no_allowed_preconsented.end(),
+                        default_groups.begin(), default_groups.end(),
+                        std::back_inserter(no_allowed_preconsented_default));
+    FunctionalGroupIDs undefined_consent;
+    std::set_difference(no_allowed_preconsented_default.begin(),
+                        no_allowed_preconsented_default.end(),
+                        disallowed_groups.begin(), disallowed_groups.end(),
+                        std::back_inserter(undefined_consent));
+
+    // Find common allowed groups
+    FunctionalGroupIDs preconsented_allowed;
+    std::merge(allowed_groups.begin(), allowed_groups.end(),
+               preconsented_groups.begin(), preconsented_groups.end(),
+               std::back_inserter(preconsented_allowed));
+    FunctionalGroupIDs merged_allowed_preconsented(preconsented_allowed.begin(),
+        std::unique(preconsented_allowed.begin(),
+                    preconsented_allowed.end()));
+    // Default groups are always allowed
+    FunctionalGroupIDs merged_allowed_preconsented_default;
+    std::merge(merged_allowed_preconsented.begin(),
+               merged_allowed_preconsented.end(),
+               default_groups.begin(), default_groups.end(),
+               std::back_inserter(merged_allowed_preconsented_default));
+    FunctionalGroupIDs common_allowed(
+      merged_allowed_preconsented_default.begin(),
+      std::unique(merged_allowed_preconsented_default.begin(),
+                  merged_allowed_preconsented_default.end()));
+
+
+    // Find common disallowed groups
+    FunctionalGroupIDs common_disallowed;
+    std::set_difference(disallowed_groups.begin(), disallowed_groups.end(),
+                        preconsented_groups.begin(), preconsented_groups.end(),
+                        std::back_inserter(common_disallowed));
+
+    FunctionalGroupNames group_names;
+    if (!pt_ext->GetFunctionalGroupNames(group_names)) {
+      LOG4CXX_WARN(logger_, "Can't get functional group names");
+      return;
+    }
+
+    // Fill result
+    FillFunctionalGroupPermissions(undefined_consent, group_names,
+                                   kGroupUndefined, permissions);
+    FillFunctionalGroupPermissions(common_allowed, group_names,
+                                   kGroupAllowed, permissions);
+    FillFunctionalGroupPermissions(common_disallowed, group_names,
+                                   kGroupDisallowed, permissions);
+
     return;
   }
 #else
@@ -716,15 +922,11 @@ void PolicyManagerImpl::GetUserPermissionsForApp(
 #endif
 }
 
-void PolicyManagerImpl::UpdateCurrentDeviceId(const std::string& device_id) {
-  LOG4CXX_INFO(logger_, "UpdateDeviceInfo");
-  last_device_id_ = device_id;
-}
-
 std::string& PolicyManagerImpl::GetCurrentDeviceId(
   const std::string& policy_app_id) {
   LOG4CXX_INFO(logger_, "GetDeviceInfo");
-  listener()->OnCurrentDeviceIdUpdateRequired(policy_app_id);
+  last_device_id_ =
+    listener()->OnCurrentDeviceIdUpdateRequired(policy_app_id);
   return last_device_id_;
 }
 
@@ -866,7 +1068,7 @@ void PolicyManagerImpl::Increment(const std::string& app_id,
       counter = "count_of_ejected_rpc_calls";
       break;
     case usage_statistics::RPCS_IN_HMI_NONE:
-      counter = "count_of_rpcs_in_hmi_none";
+      counter = "count_of_rpcs_sent_in_hmi_none";
       break;
     case usage_statistics::REMOVALS_MISBEHAVED:
       counter = "count_of_removals_misbehaved";
@@ -988,6 +1190,34 @@ AppPermissions PolicyManagerImpl::GetAppPermissionsChanges(
 void PolicyManagerImpl::RemovePendingPermissionChanges(
   const std::string& app_id) {
   app_permissions_diff_.erase(app_id);
+}
+
+bool PolicyManagerImpl::CanAppKeepContext(const std::string& app_id) {
+#if defined (EXTENDED_POLICY)
+  // TODO(AOleynik): Check design for more convenient access to policy ext data
+  PTExtRepresentation* pt_ext = dynamic_cast<PTExtRepresentation*>(policy_table_
+                                .pt_data().get());
+  if (pt_ext) {
+    return pt_ext->CanAppKeepContext(app_id);
+  }
+  return false;
+#else
+  return false;
+#endif
+}
+
+bool PolicyManagerImpl::CanAppStealFocus(const std::string& app_id) {
+#if defined (EXTENDED_POLICY)
+  // TODO(AOleynik): Check design for more convenient access to policy ext data
+  PTExtRepresentation* pt_ext = dynamic_cast<PTExtRepresentation*>(policy_table_
+                                .pt_data().get());
+  if (pt_ext) {
+    return pt_ext->CanAppStealFocus(app_id);
+  }
+  return false;
+#else
+  return false;
+#endif
 }
 
 }  //  namespace policy

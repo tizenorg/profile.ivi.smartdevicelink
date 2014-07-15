@@ -37,16 +37,18 @@
 
 namespace policy {
 class PolicyListener {
- public:
-  virtual void OnPTExchangeNeeded() = 0;
-  virtual void OnPermissionsUpdated(const std::string& policy_app_id,
-                                    const Permissions& permissions) = 0;
-  virtual void OnPendingPermissionChange(const std::string& policy_app_id) = 0;
-  virtual void OnAppRevoked(const std::string& policy_app_id) = 0;
-  virtual void OnUpdateStatusChanged(policy::PolicyTableStatus status) = 0;
-  virtual void OnCurrentDeviceIdUpdateRequired(
+  public:
+    virtual void OnPTExchangeNeeded() = 0;
+    virtual void OnPermissionsUpdated(const std::string& policy_app_id,
+                                      const Permissions& permissions,
+                                      const policy::HMILevel& default_hmi) = 0;
+    virtual void OnPendingPermissionChange(const std::string& policy_app_id) = 0;
+    virtual void OnAppRevoked(const std::string& policy_app_id) = 0;
+    virtual void OnUpdateStatusChanged(policy::PolicyTableStatus status) = 0;
+    virtual std::string OnCurrentDeviceIdUpdateRequired(
       const std::string& policy_app_id) = 0;
-  virtual void OnSystemInfoUpdateRequired() = 0;
+    virtual void OnSystemInfoUpdateRequired() = 0;
+    virtual std::string GetAppName(const std::string& policy_app_id) = 0;
 };
 }  //  namespace policy
 #endif  //  SRC_COMPONENTS_POLICY_INCLUDE_POLICY_LISTENER_H_

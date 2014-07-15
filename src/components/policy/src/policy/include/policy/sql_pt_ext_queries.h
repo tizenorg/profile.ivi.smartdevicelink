@@ -68,10 +68,16 @@ extern const std::string kInsertApplication;
 extern const std::string kSelectFriendlyMsg;
 extern const std::string kSelectAppGroupsId;
 extern const std::string kSelectConsentedGroupsId;
+extern const std::string kCountAppConsents;
 extern const std::string kSelectPreconsentedGroupsId;
 extern const std::string kSelectFunctionalGroupNames;
 extern const std::string kSelectAppPolicies;
 extern const std::string kUpdateMetaLanguage;
+extern const std::string kDeleteDeviceConsent;
+extern const std::string kDeleteAppConsent;
+extern const std::string kSelectApplicationIsPreData;
+extern const std::string kUpdateIsPredata;
+extern const std::string kHasAppPreloadedGroups;
 
 }  // namespace sql_pt_ext
 }  // namespace policy

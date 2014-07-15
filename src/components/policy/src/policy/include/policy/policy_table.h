@@ -33,7 +33,6 @@
 #ifndef SRC_COMPONENTS_POLICY_INCLUDE_POLICY_POLICY_TABLE_H_
 #define SRC_COMPONENTS_POLICY_INCLUDE_POLICY_POLICY_TABLE_H_
 
-#include "utils/logger.h"
 #include "utils/shared_ptr.h"
 #include "policy/pt_representation.h"
 #include "policy/pt_ext_representation.h"
@@ -56,7 +55,6 @@ class PolicyTable {
   }
 
  private:
-  static log4cxx::LoggerPtr logger_;
   utils::SharedPtr<PTRepresentation> pt_data_;
 };
 }  // namespace policy

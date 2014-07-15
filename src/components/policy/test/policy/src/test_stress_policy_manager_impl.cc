@@ -30,14 +30,18 @@
  */
 
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 #include <string>
 #include <set>
 #include <sstream>
 #include <fstream>
 #include "policy/policy_manager_impl.h"
+#include "mock_policy_listener.h"
 
-using policy::PolicyManagerImpl;
-using policy::BinaryMessage;
+using ::testing::_;
+using ::policy::PolicyManagerImpl;
+using ::policy::BinaryMessage;
+using ::policy::MockPolicyListener;
 
 namespace test {
 namespace components {
@@ -215,16 +219,34 @@ void PolicyManagerImplTest::CreateTable(std::ofstream& ofs) {
 }
 
 TEST_F(PolicyManagerImplTest, StressTestOneCheck) {
-  EXPECT_TRUE(
-      manager->CheckPermissions("2", "FULL", "Func-1").hmi_level_permitted);
+  MockPolicyListener mock_listener;
+
+  EXPECT_CALL(mock_listener, OnCurrentDeviceIdUpdateRequired("2")).Times(1);
+
+  manager->set_listener(&mock_listener);
+  ::policy::CheckPermissionResult output = manager->CheckPermissions("2",
+                                                                     "FULL",
+                                                                     "Func-1");
+  EXPECT_EQ(::policy::kRpcAllowed, output.hmi_level_permitted);
 }
 
 TEST_F(PolicyManagerImplTest, StressTestNoPermission) {
-  EXPECT_FALSE(
-      manager->CheckPermissions("150", "FULL", "Func-400").hmi_level_permitted);
+  MockPolicyListener mock_listener;
+
+  EXPECT_CALL(mock_listener, OnCurrentDeviceIdUpdateRequired("150")).Times(1);
+
+  manager->set_listener(&mock_listener);
+  ::policy::CheckPermissionResult output = manager->CheckPermissions(
+      "150", "FULL", "Func-400");
+  EXPECT_EQ(::policy::kRpcDisallowed, output.hmi_level_permitted);
 }
 
 TEST_F(PolicyManagerImplTest, StressTestFewChecks) {
+  MockPolicyListener mock_listener;
+
+  EXPECT_CALL(mock_listener, OnCurrentDeviceIdUpdateRequired(_)).Times(100);
+  manager->set_listener(&mock_listener);
+
   const int kNumberOfCheckings = 100;
   std::stringstream ss;
   int app, func;
@@ -236,9 +258,10 @@ TEST_F(PolicyManagerImplTest, StressTestFewChecks) {
     ss >> app_number;
     ss << func << std::endl;
     ss >> func_number;
-    EXPECT_TRUE(
-        manager->CheckPermissions(app_number, "FULL", "Func-" + func_number)
-            .hmi_level_permitted);
+
+    ::policy::CheckPermissionResult output = manager->CheckPermissions(
+        app_number, "FULL", "Func-" + func_number);
+    EXPECT_EQ(::policy::kRpcAllowed, output.hmi_level_permitted);
   }
 }
 

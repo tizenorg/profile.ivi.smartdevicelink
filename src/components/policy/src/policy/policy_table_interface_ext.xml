@@ -40,6 +40,13 @@
         <element name="prndl" />
         <element name="rpm" />
         <element name="steeringWheelAngle" />
+        <element name="myKey" />
+        <element name="airbagStatus" />
+        <element name="bodyInformation" />
+        <element name="clusterModeStatus" />
+        <element name="deviceStatus" />
+        <element name="emergencyEvent" />
+        <element name="eCallInfo" />
     </enum>
 
     <enum name="AppHMIType">
@@ -73,10 +80,10 @@
         <param name="default_hmi" type="HmiLevel" />
         <param name="keep_context" type="Boolean" />
         <param name="steal_focus" type="Boolean" />
-        <param name="memory_kb" type="Integer" minvalue="1" maxvalue="65225" />
+        <param name="memory_kb" type="Integer" minvalue="1" maxvalue="65225" mandatory="false"/>
         <param name="watchdog_timer_ms" type="Integer" minvalue="1"
-            maxvalue="65225" />
-        <param name="certificate" type="String" minlegth="0" maxlength="255"
+            maxvalue="65225" mandatory="false"/>
+        <param name="certificate" type="String" minlength="0" maxlength="255"
             mandatory="false" />
     </struct>
 
@@ -94,7 +101,7 @@
 
     <!-- maxsizes are equal to number of currently known elements of given
         type -->
-    <typedef name="Rpc" type="RpcParameters" map="true" maxsize="50" />
+    <typedef name="Rpc" type="RpcParameters" map="true" maxsize="50" null_values_allowed="true" />
 
     <struct name="Rpcs">
         <param name="user_consent_prompt" type="String" minlegth="1"
@@ -122,11 +129,12 @@
         maxsize="10" minvalue="1" maxvalue="1000" />
 
     <struct name="ModuleConfig">
+        <param name="device_certificates" type="String" minlength="1" maxlength="100" mandatory="false" map="true" minsize="1" maxsize="255" />
         <param name="preloaded_pt" type="Boolean" mandatory="false" />
         <param name="exchange_after_x_ignition_cycles" type="Integer"
             maxvalue="255" />
         <param name="exchange_after_x_kilometers" type="Integer"
-            maxvalue="255" />
+            maxvalue="4294967296" />
         <param name="exchange_after_x_days" type="Integer"
             maxvalue="255" />
         <param name="timeout_after_x_seconds" type="Integer"
@@ -138,7 +146,7 @@
             mandatory="false" />
         <param name="vehicle_model" type="String" maxlength="100"
             mandatory="false" />
-        <param name="vehicle_year" type="Integer" maxvalue="255"
+        <param name="vehicle_year" type="Integer" minvalue="1900" maxvalue="2020"
             mandatory="false" />
     </struct>
     <!-- module_config section end -->
@@ -149,15 +157,15 @@
             mandatory="false" />
         <param name="line2" type="String" maxlength="255"
             mandatory="false" />
-        <param name="tts" type="String" maxlength="255" mandatory="false" />
+        <param name="tts" type="String" maxlength="65535" mandatory="false" />
         <param name="label" type="String" maxlength="255"
             mandatory="false" />
-        <param name="textBody" type="String" maxlength="255"
+        <param name="textBody" type="String" maxlength="500"
             mandatory="false" />
     </struct>
 
     <typedef name="Languages" map="true" type="MessageString"
-        maxsize="255" mandatory="false" />
+        maxsize="500" mandatory="false" />
 
     <struct name="MessageLanguages">
         <param name="languages" type="Languages" />
@@ -187,8 +195,8 @@
     <!-- usage_and_error_counts section start -->
     <struct name="AppLevel">
         <param name="minutes_in_hmi_full" type="Integer" minvalue="0" maxvalue="65535" />
-        <param name="app_registration_language_gui" type="String" />
-        <param name="app_registration_language_vui" type="String" />
+        <param name="app_registration_language_gui" type="String" minlength="1" maxlength="10" />
+        <param name="app_registration_language_vui" type="String" minlength="1" maxlength="10" />
         <param name="count_of_rfcom_limit_reached" type="Integer" minvalue="0" maxvalue="65535" />
         <param name="minutes_in_hmi_limited" type="Integer" minvalue="0" maxvalue="65535" />
         <param name="minutes_in_hmi_background" type="Integer" minvalue="0" maxvalue="65535" />
@@ -210,7 +218,7 @@
         <param name="count_of_iap_buffer_full" type="Integer" minvalue="0" maxvalue="65535" mandatory="false" />
         <param name="count_sync_out_of_memory" type="Integer" minvalue="0" maxvalue="65535" mandatory="false" />
         <param name="count_of_sync_reboots" type="Integer" minvalue="0" maxvalue="65535" mandatory="false" />
-        <param name="app_level" type="AppLevels" />
+        <param name="app_level" type="AppLevels" mandatory="false" />
     </struct>
     <!-- usage_and_error_counts section end -->
 
@@ -232,10 +240,10 @@
 
     <struct name="DeviceParams" scope="internal">
         <param name="hardware" type="String" maxlength="255" mandatory="false"/>
-        <param name="firmware_rev" type="String" maxlength="255" mandatory="false"/>
+        <param name="firmware_rev" type="String" maxlength="255" nullable="true" mandatory="false"/>
         <param name="os" type="String" maxlength="255" mandatory="false"/>
         <param name="os_version" type="String" maxlength="255" mandatory="false"/>
-        <param name="carrier" type="String" maxlength="255" mandatory="false"/>
+        <param name="carrier" type="String" maxlength="255" nullable="true" mandatory="false"/>
         <param name="user_consent_records" type="UserConsentRecords" mandatory="false"/>
         <param name="max_number_rfcom_ports" type="Integer" maxvalue="255" mandatory="false"/>
     </struct>
@@ -257,9 +265,9 @@
         <param name="functional_groupings" type="FunctionalGroupings" />
         <param name="consumer_friendly_messages" type="ConsumerFriendlyMessages" />
         <param name="module_config" type="ModuleConfig" />
-        <param name="module_meta" type="ModuleMeta" />
-        <param name="usage_and_error_counts" type="UsageAndErrorCounts" />
-        <param name="device_data" type="DeviceData" />
+        <param name="module_meta" type="ModuleMeta" mandatory="false"/>
+        <param name="usage_and_error_counts" type="UsageAndErrorCounts" mandatory="false" />
+        <param name="device_data" type="DeviceData" mandatory="false" />
     </struct>
     <!-- policy_table section end -->
 

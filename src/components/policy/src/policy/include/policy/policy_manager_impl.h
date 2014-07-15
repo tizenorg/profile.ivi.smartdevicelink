@@ -56,7 +56,7 @@ class PolicyManagerImpl : public PolicyManager {
     return listener_;
   }
   virtual bool LoadPTFromFile(const std::string& file_name);
-  virtual bool LoadPT(const BinaryMessage& pt_content);
+  virtual bool LoadPT(const std::string& file, const BinaryMessage& pt_content);
     virtual std::string GetUpdateUrl(int service_type);
     virtual EndpointUrls GetUpdateUrls(int service_type);
   virtual BinaryMessageSptr RequestPTUpdate();
@@ -84,6 +84,8 @@ class PolicyManagerImpl : public PolicyManager {
   virtual DeviceConsent GetUserConsentForDevice(const std::string& device_id);
   virtual void SetUserConsentForDevice(const std::string& device_id,
                                        bool is_allowed);
+    virtual bool ReactOnUserDevConsentForApp(const std::string app_id,
+        bool is_device_allowed);
   virtual bool GetInitialAppData(const std::string& application_id,
                                  StringArray* nicknames = NULL,
                                  StringArray* app_hmi_types = NULL);
@@ -108,8 +110,6 @@ class PolicyManagerImpl : public PolicyManager {
       const std::string& device_id, const std::string& policy_app_id,
       std::vector<FunctionalGroupPermission>& permissions);
 
-  virtual void UpdateCurrentDeviceId(const std::string& device_id);
-
   virtual std::string& GetCurrentDeviceId(const std::string& policy_app_id);
 
   virtual void SetSystemLanguage(const std::string& language);
@@ -131,6 +131,13 @@ class PolicyManagerImpl : public PolicyManager {
 
   AppPermissions GetAppPermissionsChanges(const std::string& app_id);
   void RemovePendingPermissionChanges(const std::string& app_id);
+
+  void SendNotificationOnPermissionsUpdated(const std::string& application_id);
+
+  bool CleanupUnpairedDevices(const DeviceIds& device_ids);
+
+  bool CanAppKeepContext(const std::string& app_id);
+  bool CanAppStealFocus(const std::string& app_id);
 
  protected:
   virtual utils::SharedPtr<policy_table::Table> Parse(
@@ -198,11 +205,8 @@ class PolicyManagerImpl : public PolicyManager {
   /**
    * @brief Check update status and notify HMI on changes
    */
-  void CheckUpdateStatus();
+  void CheckUpdateStatus();  
 
-  void SendNotificationOnPermissionsUpdated(const std::string& application_id);
-
-  static log4cxx::LoggerPtr logger_;
   PolicyListener* listener_;
   PolicyTable policy_table_;
   utils::SharedPtr<policy_table::Table> policy_table_snapshot_;

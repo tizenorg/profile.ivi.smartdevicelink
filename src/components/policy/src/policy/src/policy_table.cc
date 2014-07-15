@@ -37,10 +37,11 @@
 #  include "policy/sql_pt_representation.h"
 #endif  // EXTENDED_POLICY
 
+#include "utils/logger.h"
+
 namespace policy {
 
-log4cxx::LoggerPtr PolicyTable::logger_ = log4cxx::LoggerPtr(
-    log4cxx::Logger::getLogger("PolicyTable"));
+CREATE_LOGGERPTR_GLOBAL(logger_, "PolicyTable")
 
 PolicyTable::PolicyTable()
     : pt_data_(

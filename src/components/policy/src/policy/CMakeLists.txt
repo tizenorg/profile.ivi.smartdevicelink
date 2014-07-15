@@ -54,6 +54,7 @@ include_directories (
   ${CMAKE_SOURCE_DIR}/src/components/rpc_base/include
   ${CMAKE_CURRENT_BINARY_DIR}
   ${CMAKE_SOURCE_DIR}/src/components/utils/include/
+  ${CMAKE_SOURCE_DIR}/src/components/config_profile/include
 )
 
 set(SOURCES
@@ -84,10 +85,15 @@ else ()
   add_subdirectory(sqlite_wrapper)
 endif ()
 
-set(LIBRARIES dbms policy_table_interface_base log4cxx )
+set(LIBRARIES ConfigProfile dbms policy_table_interface_base)
 
 add_library(${target} SHARED ${SOURCES})
 target_link_libraries(${target} ${LIBRARIES})
+
+if(ENABLE_LOG)
+  add_dependencies(${target} liblog4cxx)
+  target_link_libraries(${target} log4cxx -L${LOG4CXX_LIBS_DIRECTORY})
+endif()
 
 add_custom_target(copy_library_${target} ALL
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -95,6 +101,15 @@ add_custom_target(copy_library_${target} ALL
     ${copy_destination}
     DEPENDS ${target}
     COMMENT "Copying library ${library_name}")
+
+if (BUILD_TESTS_WITH_HMI)
+  add_custom_target(test_copy_library_${target} ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+      ${CMAKE_CURRENT_BINARY_DIR}/${library_name}
+      ${CMAKE_BINARY_DIR}/test/
+      DEPENDS ${target}
+      COMMENT "Copying library ${library_name}")
+endif(BUILD_TESTS_WITH_HMI)
 
 install(TARGETS ${target}
   DESTINATION ${install_destination}

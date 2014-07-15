@@ -93,7 +93,7 @@ class SetBindNull {
 };
 
 SQLQuery::SQLQuery(SQLDatabase* db)
-    : db_(*db),
+    : db_(db),
       query_(""),
       statement_(-1),
       bindings_(NULL),
@@ -105,11 +105,13 @@ SQLQuery::SQLQuery(SQLDatabase* db)
 
 SQLQuery::~SQLQuery() {
   Finalize();
+  db_->Close();
+  delete db_;
 }
 
 bool SQLQuery::Prepare(const std::string& query) {
   query_ = query;
-  statement_ = qdb_stmt_init(db_.conn(), query.c_str(), query.length() + 1);
+  statement_ = qdb_stmt_init(db_->conn(), query.c_str(), query.length() + 1);
   if (statement_ == -1) {
     error_ = Error::ERROR;
     return false;
@@ -135,7 +137,7 @@ int SQLQuery::SetBinds() {
 }
 
 bool SQLQuery::Result() {
-  result_ = qdb_getresult(db_.conn());
+  result_ = qdb_getresult(db_->conn());
   if (!result_) {
     error_ = Error::ERROR;
     return false;
@@ -156,7 +158,7 @@ bool SQLQuery::Exec() {
 
   current_row_ = 0;
   int binding_count = SetBinds();
-  if (qdb_stmt_exec(db_.conn(), statement_, bindings_, binding_count) == -1) {
+  if (qdb_stmt_exec(db_->conn(), statement_, bindings_, binding_count) == -1) {
     error_ = Error::ERROR;
     return false;
   }
@@ -187,7 +189,7 @@ bool SQLQuery::Reset() {
 }
 
 void SQLQuery::Finalize() {
-  if (Reset() && qdb_stmt_free(db_.conn(), statement_) != -1) {
+  if (Reset() && qdb_stmt_free(db_->conn(), statement_) != -1) {
     statement_ = 0;
   } else {
     error_ = Error::ERROR;
@@ -196,7 +198,7 @@ void SQLQuery::Finalize() {
 
 bool SQLQuery::Exec(const std::string& query) {
   query_ = query;
-  if (qdb_statement(db_.conn(), query.c_str()) == -1) {
+  if (qdb_statement(db_->conn(), query.c_str()) == -1) {
     error_ = Error::ERROR;
     return false;
   }
@@ -254,11 +256,11 @@ const std::string& SQLQuery::query() const {
 }
 
 SQLError SQLQuery::LastError() const {
-  return SQLError(error_, qdb_geterrmsg(db_.conn()));
+  return SQLError(error_, qdb_geterrmsg(db_->conn()));
 }
 
 int64_t SQLQuery::LastInsertId() const {
-  return qdb_last_insert_rowid(db_.conn(), result_);
+  return qdb_last_insert_rowid(db_->conn(), result_);
 }
 
 }  // namespace dbms

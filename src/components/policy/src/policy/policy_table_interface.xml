@@ -40,6 +40,13 @@
         <element name="prndl" />
         <element name="rpm" />
         <element name="steeringWheelAngle" />
+        <element name="myKey" />
+        <element name="airbagStatus" />
+        <element name="bodyInformation" />
+        <element name="clusterModeStatus" />
+        <element name="deviceStatus" />
+        <element name="emergencyEvent" />
+        <element name="eCallInfo" />
     </enum>
 
     <enum name="AppHMIType">
@@ -57,14 +64,6 @@
     <!-- Common parameters end -->
 
     <!-- app_policies section start -->
-    <struct name="Dummy">
-        <description>
-            Typedefs won't proceeded until first struct
-            definition
-            To be removed after typedef issue fix within
-            generator code
-        </description>
-    </struct>
 
     <typedef name="Strings" type="String" maxlength="255" array="true"
         maxsize="255" />
@@ -76,10 +75,10 @@
         <param name="groups" type="Strings" />
         <param name="nicknames" type="Strings" mandatory="false" />
         <param name="AppHMIType" type="AppHMITypes" mandatory="false" />
-        <param name="memory_kb" type="Integer" minvalue="1" maxvalue="65225" />
+        <param name="memory_kb" type="Integer" minvalue="1" maxvalue="65225" mandatory="false"/>
         <param name="watchdog_timer_ms" type="Integer" minvalue="1"
-            maxvalue="65225" />
-        <param name="certificate" type="String" minlegth="0" maxlength="255"
+            maxvalue="65225" mandatory="false"/>
+        <param name="certificate" type="String" minlength="0" maxlength="255"
             mandatory="false" />
     </struct>
 
@@ -102,7 +101,7 @@
     <struct name="Rpcs">
         <param name="user_consent_prompt" type="String" minlegth="1"
             maxlength="255" mandatory="false"/>
-        <param name="rpcs" type="Rpc" />
+        <param name="rpcs" type="Rpc" null_values_allowed="true"/>
     </struct>
     <!-- app_policies section end -->
 
@@ -125,11 +124,12 @@
         maxsize="10" minvalue="1" maxvalue="1000" />
 
     <struct name="ModuleConfig">
+        <param name="device_certificates" type="String" minlength="1" maxlength="100" mandatory="false" map="true" minsize="1" maxsize="255" />
         <param name="preloaded_pt" type="Boolean" mandatory="false" />
         <param name="exchange_after_x_ignition_cycles" type="Integer"
             maxvalue="255" />
         <param name="exchange_after_x_kilometers" type="Integer"
-            maxvalue="255" />
+            maxvalue="4294967296" />
         <param name="exchange_after_x_days" type="Integer"
             maxvalue="255" />
         <param name="timeout_after_x_seconds" type="Integer"
@@ -141,7 +141,7 @@
             mandatory="false" />
         <param name="vehicle_model" type="String" maxlength="100"
             mandatory="false" />
-        <param name="vehicle_year" type="Integer" maxvalue="255"
+        <param name="vehicle_year" type="Integer" minvalue="1900" maxvalue="2020"
             mandatory="false" />
     </struct>
     <!-- module_config section end -->
@@ -152,15 +152,15 @@
             mandatory="false" />
         <param name="line2" type="String" maxlength="255"
             mandatory="false" />
-        <param name="tts" type="String" maxlength="255" mandatory="false" />
+        <param name="tts" type="String" maxlength="65535" mandatory="false" />
         <param name="label" type="String" maxlength="255"
             mandatory="false" />
-        <param name="textBody" type="String" maxlength="255"
+        <param name="textBody" type="String" maxlength="500"
             mandatory="false" />
     </struct>
 
     <typedef name="Languages" map="true" type="MessageString"
-        maxsize="255" mandatory="false" />
+        maxsize="500" mandatory="false" />
 
     <struct name="MessageLanguages">
         <param name="languages" type="Languages" />
@@ -211,9 +211,9 @@
         <param name="functional_groupings" type="FunctionalGroupings" />
         <param name="consumer_friendly_messages" type="ConsumerFriendlyMessages" />
         <param name="module_config" type="ModuleConfig" />
-        <param name="module_meta" type="ModuleMeta" />
-        <param name="usage_and_error_counts" type="UsageAndErrorCounts" />
-        <param name="device_data" type="DeviceData" />
+        <param name="module_meta" type="ModuleMeta" mandatory="false"/>
+        <param name="usage_and_error_counts" type="UsageAndErrorCounts" mandatory="false" />
+        <param name="device_data" type="DeviceData" mandatory="false" />
     </struct>
     <!-- policy_table section end -->
 

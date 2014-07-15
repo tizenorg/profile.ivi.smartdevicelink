@@ -83,7 +83,7 @@ const std::string kCreateSchema =
   "  `exchange_after_x_days`, `timeout_after_x_seconds`) "
   "  VALUES(1, 0, 0, 0, 0); "
   "CREATE TABLE IF NOT EXISTS `functional_group`( "
-  "  `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+  "  `id` INTEGER PRIMARY KEY NOT NULL, "
   "  `user_consent_prompt` TEXT UNIQUE ON CONFLICT REPLACE, "
   "  `name` VARCHAR(100) NOT NULL "
   "); "
@@ -150,6 +150,7 @@ const std::string kCreateSchema =
   "  `priority_value` VARCHAR(45), "
   "  `is_revoked` BOOLEAN, "
   "  `is_default` BOOLEAN, "
+  "  `is_predata` BOOLEAN, "
   "  `memory_kb` INTEGER NOT NULL, "
   "  `watchdog_timer_ms` INTEGER NOT NULL, "
   "  `certificate` VARCHAR(45), "
@@ -222,19 +223,19 @@ const std::string kCreateSchema =
   "  ON `device_consent_group`(`device_id`); "
   "CREATE TABLE IF NOT EXISTS `app_level`( "
   "  `application_id` VARCHAR(45) PRIMARY KEY NOT NULL, "
-  "  `minutes_in_hmi_full` INTEGER, "
-  "  `minutes_in_hmi_limited` INTEGER, "
-  "  `minutes_in_hmi_background` INTEGER, "
-  "  `minutes_in_hmi_none` INTEGER, "
-  "  `count_of_rfcom_limit_reached` INTEGER, "
-  "  `count_of_user_selections` INTEGER, "
-  "  `count_of_rejections_sync_out_of_memory` INTEGER, "
-  "  `count_of_rejections_nickname_mismatch` INTEGER, "
-  "  `count_of_rejections_duplicate_name` INTEGER, "
-  "  `count_of_rejected_rpcs_calls` INTEGER, "
-  "  `count_of_rpcs_sent_in_hmi_none` INTEGER, "
-  "  `count_of_removals_for_bad_behavior` INTEGER, "
-  "  `count_of_run_attempts_while_revoked` INTEGER, "
+  "  `minutes_in_hmi_full` INTEGER DEFAULT 0, "
+  "  `minutes_in_hmi_limited` INTEGER DEFAULT 0, "
+  "  `minutes_in_hmi_background` INTEGER DEFAULT 0, "
+  "  `minutes_in_hmi_none` INTEGER DEFAULT 0, "
+  "  `count_of_rfcom_limit_reached` INTEGER DEFAULT 0, "
+  "  `count_of_user_selections` INTEGER DEFAULT 0, "
+  "  `count_of_rejections_sync_out_of_memory` INTEGER DEFAULT 0, "
+  "  `count_of_rejections_nickname_mismatch` INTEGER DEFAULT 0, "
+  "  `count_of_rejections_duplicate_name` INTEGER DEFAULT 0, "
+  "  `count_of_rejected_rpcs_calls` INTEGER DEFAULT 0, "
+  "  `count_of_rpcs_sent_in_hmi_none` INTEGER DEFAULT 0, "
+  "  `count_of_removals_for_bad_behavior` INTEGER DEFAULT 0, "
+  "  `count_of_run_attempts_while_revoked` INTEGER DEFAULT 0, "
   "  `app_registration_language_gui` VARCHAR(25), "
   "  `app_registration_language_vui` VARCHAR(25), "
   "  CONSTRAINT `fk_app_levels_application1` "
@@ -307,7 +308,7 @@ const std::string kCreateSchema =
   "CREATE INDEX IF NOT EXISTS `endpoint.fk_endpoint_application1_idx` "
   "  ON `endpoint`(`application_id`); "
   "CREATE TABLE IF NOT EXISTS `message`( "
-  "  `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+  "  `id` INTEGER PRIMARY KEY NOT NULL, "
   "  `tts` TEXT, "
   "  `label` TEXT, "
   "  `line1` TEXT, "
@@ -568,6 +569,8 @@ const std::string kSelectApplicationIsDefault =
 
 const std::string kUpdateIsDefault =
   "UPDATE `application` SET `is_default` = ? WHERE `id` = ?";
+
+const std::string kDeleteDevice = "DELETE FROM `device` WHERE `id` = ?";
 
 }  // namespace sql_pt
 }  // namespace policy

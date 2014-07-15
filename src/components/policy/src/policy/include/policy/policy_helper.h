@@ -40,6 +40,9 @@
 namespace policy {
 class PolicyManagerImpl;
 
+const std::string kAllowedKey = "allowed";
+const std::string kUserDisallowedKey = "userDisallowed";
+
 namespace policy_table = rpc::policy_table_interface_base;
 
 typedef policy_table::Strings::const_iterator StringsConstItr;
@@ -85,6 +88,8 @@ struct CheckAppPolicy {
   void SendOnPendingPermissions(const AppPoliciesValueType& app_policy,
                                 AppPermissions permissions) const;
   bool IsAppRevoked(const AppPoliciesValueType& app_policy) const;
+  bool NicknamesMatch(const std::string app_id,
+                        const AppPoliciesValueType& app_policy) const;
   bool operator()(const AppPoliciesValueType& app_policy);
  private:
   PolicyManagerImpl* pm_;
@@ -96,7 +101,7 @@ struct CheckAppPolicy {
  * parameters
  */
 struct FillNotificationData {
-  FillNotificationData(Permissions& data, PermissionState group_state);
+  FillNotificationData(Permissions& data, GroupConsent group_state);
   bool operator()(const RpcValueType& rpc);
   void UpdateHMILevels(const policy_table::HmiLevels& in_hmi,
                        std::set<HMILevel>& out_hmi);
@@ -105,8 +110,6 @@ struct FillNotificationData {
  private:
   void ExcludeDisAllowed();
   std::string current_key_;
-  std::string allowed_key_;
-  std::string disallowed_key_;
   Permissions& data_;
 };
 
@@ -121,7 +124,7 @@ struct ProcessFunctionalGroup {
       Permissions& data);
   bool operator()(const StringsValueType& group_name);
  private:
-  PermissionState GetGroupState(const std::string& group_name);
+  GroupConsent GetGroupState(const std::string& group_name);
   const policy_table::FunctionalGroupings& fg_;
   Permissions& data_;
   const std::vector<FunctionalGroupPermission>& group_permissions_;
@@ -135,6 +138,19 @@ struct FunctionalGroupInserter {
   PermissionsList& list_;
   const policy_table::Strings& preconsented_;
 };
+
+/**
+ * @brief Fills FunctionalGroupPermissions with provided params
+ * @param ids Functional group ids from DB
+ * @param names Group names and user_consent_prompt
+ * @param state User consent for group
+ * @param permissions Struct to be filled with provided params
+ */
+void FillFunctionalGroupPermissions(
+    FunctionalGroupIDs& ids,
+    FunctionalGroupNames& names,
+    GroupConsent state,
+    std::vector<FunctionalGroupPermission>& permissions);
 
 }
 

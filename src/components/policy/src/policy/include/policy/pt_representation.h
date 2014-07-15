@@ -245,11 +245,25 @@ class PTRepresentation {
     virtual bool IsDefaultPolicy(const std::string& app_id) const = 0;
 
     /**
+         * Checks if the application has pre_data policy
+         * @param app_id application id
+         * @return true if application has pre_data policy
+         */
+    virtual bool IsPredataPolicy(const std::string& app_id) const = 0;
+
+    /**
      * Sets default policy for application
      * @param app_id application id
      * @return true if success
      */
     virtual bool SetDefaultPolicy(const std::string& app_id) = 0;
+
+    /**
+     * @brief Removes unpaired device records and related records from DB
+     * @param device_ids List of device_id, which should be removed
+     * @return true, if succedeed, otherwise - false
+     */
+    virtual bool CleanupUnpairedDevices(const DeviceIds& device_ids) = 0;
 };
 
 }  //  namespace policy

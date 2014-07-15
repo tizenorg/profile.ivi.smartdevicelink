@@ -51,24 +51,33 @@ class SQLPTExtRepresentationTest : public ::testing::Test {
   static const std::string kFileName;
 
   static void SetUpTestCase() {
-    sqlite3_open(kFileName.c_str(), &conn);
     reps = new SQLPTExtRepresentation;
-    EXPECT_TRUE(reps->Init());
-    sqlite3_open(kFileName.c_str(), &conn);
+    EXPECT_EQ(::policy::SUCCESS, reps->Init());
+    EXPECT_EQ(SQLITE_OK, sqlite3_open(kFileName.c_str(), &conn));
   }
 
   static void TearDownTestCase() {
-//    EXPECT_TRUE(reps->Clear());
+    EXPECT_TRUE(reps->Clear());
     EXPECT_TRUE(reps->Close());
     delete reps;
     sqlite3_close(conn);
-//    remove(kFileName.c_str());
+    remove(kFileName.c_str());
   }
 };
 
 sqlite3* SQLPTExtRepresentationTest::conn = 0;
 SQLPTExtRepresentation* SQLPTExtRepresentationTest::reps = 0;
 const std::string SQLPTExtRepresentationTest::kFileName = "policy.sqlite";
+
+::testing::AssertionResult IsValid(const policy_table::Table &table) {
+  if (table.is_valid()) {
+    return ::testing::AssertionSuccess();
+  } else {
+    ::rpc::ValidationReport report(" - table");
+    table.ReportErrors(&report);
+    return ::testing::AssertionFailure() << ::rpc::PrettyFormat(report);
+  }
+}
 
 TEST_F(SQLPTExtRepresentationTest, SaveGenerateSnapshot) {
   Json::Value expect(Json::objectValue);
@@ -84,13 +93,13 @@ TEST_F(SQLPTExtRepresentationTest, SaveGenerateSnapshot) {
   policy_table["app_policies"] = Json::Value(Json::objectValue);
 
   Json::Value& module_meta = policy_table["module_meta"];
-  module_meta["ccpu_version"] = Json::Value("");
-  module_meta["language"] = Json::Value("");
-  module_meta["wers_country_code"] = Json::Value("");
+  module_meta["ccpu_version"] = Json::Value("ccpu version");
+  module_meta["language"] = Json::Value("ru");
+  module_meta["wers_country_code"] = Json::Value("ru");
   module_meta["pt_exchanged_at_odometer_x"] = Json::Value(0);
   module_meta["pt_exchanged_x_days_after_epoch"] = Json::Value(0);
   module_meta["ignition_cycles_since_last_exchange"] = Json::Value(0);
-  module_meta["vin"] = Json::Value("");
+  module_meta["vin"] = Json::Value("vin");
 
   Json::Value& module_config = policy_table["module_config"];
   module_config["preloaded_pt"] = Json::Value(true);
@@ -103,10 +112,9 @@ TEST_F(SQLPTExtRepresentationTest, SaveGenerateSnapshot) {
   module_config["seconds_between_retries"][1] = Json::Value(20);
   module_config["seconds_between_retries"][2] = Json::Value(30);
   module_config["endpoints"] = Json::Value(Json::objectValue);
-  module_config["endpoints"]["default"] = Json::Value(Json::objectValue);
-  module_config["endpoints"]["default"]["default"] = Json::Value(
-      Json::arrayValue);
-  module_config["endpoints"]["default"]["default"][0] = Json::Value(
+  module_config["endpoints"]["0x00"] = Json::Value(Json::objectValue);
+  module_config["endpoints"]["0x00"]["default"] = Json::Value(Json::arrayValue);
+  module_config["endpoints"]["0x00"]["default"][0] = Json::Value(
       "http://ford.com/cloud/default");
   module_config["notifications_per_minute_by_priority"] = Json::Value(
       Json::objectValue);
@@ -124,21 +132,31 @@ TEST_F(SQLPTExtRepresentationTest, SaveGenerateSnapshot) {
       6);
   module_config["vehicle_make"] = Json::Value("MakeT");
   module_config["vehicle_model"] = Json::Value("ModelT");
-  module_config["vehicle_year"] = Json::Value(14);
+  module_config["vehicle_year"] = Json::Value(2014);
 
   Json::Value& usage_and_error_counts = policy_table["usage_and_error_counts"];
   usage_and_error_counts["count_of_iap_buffer_full"] = Json::Value(0);
   usage_and_error_counts["count_sync_out_of_memory"] = Json::Value(0);
   usage_and_error_counts["count_of_sync_reboots"] = Json::Value(0);
-//  usage_and_error_counts["app_level"] = Json::Value(Json::objectValue);
-  // this map is not mandatory but is_valid returns false if map is empty
-//  usage_and_error_counts["app_level"]["12345"] = Json::Value(Json::objectValue);
 
   Json::Value& device_data = policy_table["device_data"];
-  device_data["user_consent_records"] = Json::Value(Json::objectValue);
+  device_data["DEVICEHASH"] = Json::Value(Json::objectValue);
+  device_data["DEVICEHASH"]["hardware"] = Json::Value("hardware");
+  device_data["DEVICEHASH"]["firmware_rev"] = Json::Value("firmware_rev");
+  device_data["DEVICEHASH"]["os"] = Json::Value("os");
+  device_data["DEVICEHASH"]["os_version"] = Json::Value("os_version");
+  device_data["DEVICEHASH"]["carrier"] = Json::Value("carrier");
+  device_data["DEVICEHASH"]["max_number_rfcom_ports"] = Json::Value(10);
 
   Json::Value& functional_groupings = policy_table["functional_groupings"];
   functional_groupings["default"] = Json::Value(Json::objectValue);
+  Json::Value& default_group = functional_groupings["default"];
+  default_group["rpcs"] = Json::Value(Json::objectValue);
+  default_group["rpcs"]["Update"] = Json::Value(Json::objectValue);
+  default_group["rpcs"]["Update"]["hmi_levels"] = Json::Value(Json::arrayValue);
+  default_group["rpcs"]["Update"]["hmi_levels"][0] = Json::Value("FULL");
+  default_group["rpcs"]["Update"]["parameters"] = Json::Value(Json::arrayValue);
+  default_group["rpcs"]["Update"]["parameters"][0] = Json::Value("speed");
 
   Json::Value& consumer_friendly_messages =
       policy_table["consumer_friendly_messages"];
@@ -146,22 +164,34 @@ TEST_F(SQLPTExtRepresentationTest, SaveGenerateSnapshot) {
 
   Json::Value& app_policies = policy_table["app_policies"];
   app_policies["default"] = Json::Value(Json::objectValue);
+  app_policies["default"]["memory_kb"] = Json::Value(50);
+  app_policies["default"]["watchdog_timer_ms"] = Json::Value(100);
+  app_policies["default"]["groups"] = Json::Value(Json::arrayValue);
+  app_policies["default"]["groups"][0] = Json::Value("default");
+  app_policies["default"]["priority"] = Json::Value("EMERGENCY");
+  app_policies["default"]["default_hmi"] = Json::Value("FULL");
+  app_policies["default"]["keep_context"] = Json::Value(true);
+  app_policies["default"]["steal_focus"] = Json::Value(true);
+  app_policies["default"]["certificate"] = Json::Value("sign");
 
   policy_table::Table table(&expect);
 
-  //TODO(KKolodiy): temporarily validation is turned off
-//  EXPECT_TRUE(table.is_valid());
+  ASSERT_TRUE(IsValid(table));
   ASSERT_TRUE(reps->Save(table));
+  ASSERT_TRUE(reps->SetMetaInfo("ccpu version", "ru", "ru"));
+  const char* query_vin = "UPDATE `module_meta` SET `vin` = 'vin'; ";
+  ASSERT_EQ(SQLITE_OK, sqlite3_exec(conn, query_vin, NULL, NULL, NULL));
   utils::SharedPtr<policy_table::Table> snapshot = reps->GenerateSnapshot();
-//  EXPECT_TRUE(snapshot->is_valid());
-  EXPECT_EQ(expect.toStyledString(), snapshot->ToJsonValue().toStyledString());
+  EXPECT_TRUE(IsValid(*snapshot));
+  EXPECT_EQ(table.ToJsonValue().toStyledString(),
+            snapshot->ToJsonValue().toStyledString());
 }
 
 TEST_F(SQLPTExtRepresentationTest, CanAppKeepContext) {
   const char* query_delete = "DELETE FROM `application`; ";
   ASSERT_EQ(SQLITE_OK, sqlite3_exec(conn, query_delete, NULL, NULL, NULL));
-  const char* query_insert =
-      "INSERT INTO `application` (`id`, `keep_context`) VALUES ('12345', 1)";
+  const char* query_insert = "INSERT INTO `application` (`id`, `memory_kb`,"
+      " `watchdog_timer_ms`, `keep_context`) VALUES ('12345', 5, 10, 1)";
   ASSERT_EQ(SQLITE_OK, sqlite3_exec(conn, query_insert, NULL, NULL, NULL));
   EXPECT_FALSE(reps->CanAppKeepContext("0"));
   EXPECT_TRUE(reps->CanAppKeepContext("12345"));
@@ -170,8 +200,8 @@ TEST_F(SQLPTExtRepresentationTest, CanAppKeepContext) {
 TEST_F(SQLPTExtRepresentationTest, CanAppStealFocus) {
   const char* query_delete = "DELETE FROM `application`; ";
   ASSERT_EQ(SQLITE_OK, sqlite3_exec(conn, query_delete, NULL, NULL, NULL));
-  const char* query_insert =
-      "INSERT INTO `application` (`id`, `steal_focus`) VALUES ('12345', 1)";
+  const char* query_insert = "INSERT INTO `application` (`id`, `memory_kb`,"
+      " `watchdog_timer_ms`, `steal_focus`) VALUES ('12345', 5, 10, 1)";
   ASSERT_EQ(SQLITE_OK, sqlite3_exec(conn, query_insert, NULL, NULL, NULL));
   EXPECT_TRUE(reps->CanAppStealFocus("12345"));
   EXPECT_FALSE(reps->CanAppStealFocus("0"));

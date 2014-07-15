@@ -191,7 +191,7 @@ class SQLQuery {
   /**
    * The instantiation of database
    */
-  SQLDatabase& db_;
+  SQLDatabase* db_;
 
   /**
    * The string of query

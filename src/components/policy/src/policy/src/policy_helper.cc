@@ -31,12 +31,18 @@
  */
 
 #include <algorithm>
+#include <sstream>
+#include <string.h>
+#include "utils/logger.h"
 #include "policy/policy_helper.h"
 #include "policy/policy_manager_impl.h"
 
 namespace policy {
 
 namespace {
+
+CREATE_LOGGERPTR_GLOBAL(logger_, "PolicyManagerImpl")
+
 bool Match(const StringsValueType& first_name,
            const StringsValueType& second_name) {
   const std::string& first = first_name;
@@ -49,6 +55,7 @@ bool Compare(const StringsValueType& first, const StringsValueType& second) {
   const std::string& second_str = second;
   return (strcasecmp(first_str.c_str(), second_str.c_str()) < 0);
 }
+
 }
 
 CompareGroupName::CompareGroupName(const StringsValueType& group_name)
@@ -171,7 +178,7 @@ void CheckAppPolicy::SendNotification(
   // Get current device_id from application id
   const std::string device_id = pm_->GetCurrentDeviceId(app_policy.first);
   if (device_id.empty()) {
-    LOG4CXX_WARN(pm_->logger_, "Couldn't find device info for application id "
+    LOG4CXX_WARN(logger_, "Couldn't find device info for application id "
                  "'" << app_policy.first << "'");
     return;
   }
@@ -182,8 +189,15 @@ void CheckAppPolicy::SendNotification(
                                group_permissons, notification_data);
 
   const std::string app_id = app_policy.first;
-  LOG4CXX_INFO(pm_->logger_, "Send notification for application_id:" << app_id);
-  pm_->listener()->OnPermissionsUpdated(app_id, notification_data);
+  LOG4CXX_INFO(logger_, "Send notification for application_id:" << app_id);
+#if defined (EXTENDED_POLICY)
+  pm_->listener()->OnPermissionsUpdated(app_id, notification_data,
+                                        policy_table::EnumToJsonString(app_policy.second.default_hmi));
+#else
+  // Default_hmi is Ford-specific and should not be used with basic policy
+  const std::string default_hmi;
+  pm_->listener()->OnPermissionsUpdated(app_id, notification_data, default_hmi);
+#endif
 }
 
 void CheckAppPolicy::SendOnPendingPermissions(
@@ -192,7 +206,8 @@ void CheckAppPolicy::SendOnPendingPermissions(
   if (permissions.appPermissionsConsentNeeded) {
 #if defined(EXTENDED_POLICY)
     const policy_table::Strings& groups = app_policy.second.groups;
-    const policy_table::Strings& preconsented_groups = app_policy.second
+    // TODO(IKozyrenko): Check logic if optional container is missing
+    const policy_table::Strings& preconsented_groups = *app_policy.second
         .preconsented_groups;
 
     // TODO(KKolodiy): Use consent_groups to filtrate groups
@@ -223,6 +238,22 @@ bool CheckAppPolicy::IsAppRevoked(
   return app_policy.second.is_null();
 }
 
+bool CheckAppPolicy::NicknamesMatch(const std::string app_id,
+                                    const AppPoliciesValueType& app_policy) const {
+  std::string app_name = pm_->listener()->GetAppName(app_id);
+  if (!app_name.empty() && app_policy.second.nicknames && !app_policy.second.nicknames->empty()) {
+    for (policy_table::Strings::const_iterator it = app_policy.second.nicknames->begin();
+         app_policy.second.nicknames->end() != it; ++it) {
+      std::string temp = *it;
+      if (temp.compare(app_name) == 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+  return true;
+}
+
 bool CheckAppPolicy::operator()(const AppPoliciesValueType& app_policy) {
   policy_table::ApplicationPolicies& current_policies = pm_
       ->policy_table_snapshot_->policy_table.app_policies;
@@ -243,7 +274,10 @@ bool CheckAppPolicy::operator()(const AppPoliciesValueType& app_policy) {
     policy_table::ApplicationPolicies::iterator it = current_policies.find(
           app_id);
     // Update snapshot with new policies for application
-    (*it).second = app_policy.second;
+    if (it != current_policies.end()) {
+      (*it).second = app_policy.second;
+      it->second.set_to_null();
+    }
     return true;
   }
 
@@ -256,9 +290,23 @@ bool CheckAppPolicy::operator()(const AppPoliciesValueType& app_policy) {
     return true;
   }
 
+  if (!NicknamesMatch(app_id, app_policy)) {
+    permissions_diff.appUnauthorized = true;
+    pm_->app_permissions_diff_.insert(std::make_pair(app_id, permissions_diff));
+    pm_->listener()->OnPendingPermissionChange(app_policy.first);
+    policy_table::ApplicationPolicies::iterator it = current_policies.find(
+          app_id);
+    // Update snapshot with new policies for application
+    if (it != current_policies.end()) {
+      (*it).second = app_policy.second;
+      it->second.set_to_null();
+    }
+    return true;
+  }
+
   if (HasSameGroups(app_policy, &permissions_diff)) {
     LOG4CXX_INFO(
-      pm_->logger_,
+      logger_,
       "Permissions for application:" << app_id << " wasn't changed.");
     return true;
   }
@@ -269,7 +317,7 @@ bool CheckAppPolicy::operator()(const AppPoliciesValueType& app_policy) {
   (*it).second = app_policy.second;
 
   // Don't sent notification for "default"
-  if ("default" != app_id && "device" != app_id) {
+  if (kDefaultId != app_id && kDeviceId != app_id) {
     SendNotification(app_policy);
     SendOnPendingPermissions(app_policy, permissions_diff);
   }
@@ -280,18 +328,15 @@ bool CheckAppPolicy::operator()(const AppPoliciesValueType& app_policy) {
 }
 
 FillNotificationData::FillNotificationData(Permissions& data,
-                                           PermissionState group_state)
-  : data_(data),
-    allowed_key_("allowed"),
-    disallowed_key_("userDisallowed") {
+    GroupConsent group_state)
+  : data_(data) {
   switch (group_state) {
-  case kAllowed:
-  case kUndefined:
-    current_key_ = allowed_key_;
-    break;
-  default:
-    current_key_ = disallowed_key_;
-    break;
+    case kGroupAllowed:
+      current_key_ = kAllowedKey;
+      break;
+    default:
+      current_key_ = kUserDisallowedKey;
+      break;
   }
 }
 
@@ -301,14 +346,16 @@ bool FillNotificationData::operator()(const RpcValueType& rpc) {
   if (data_.end() != it) {
     UpdateHMILevels(rpc.second.hmi_levels,
                     (*it).second.hmi_permissions[current_key_]);
-    UpdateParameters(rpc.second.parameters,
+    // TODO(IKozyrenko): Check logic if optional container is missing
+    UpdateParameters(*rpc.second.parameters,
                      (*it).second.parameter_permissions[current_key_]);
     ExcludeDisAllowed();
   } else {
     // If rpc is not present - add its permissions
     UpdateHMILevels(rpc.second.hmi_levels,
                     data_[rpc.first].hmi_permissions[current_key_]);
-    UpdateParameters(rpc.second.parameters,
+    // TODO(IKozyrenko): Check logic if optional container is missing
+    UpdateParameters(*rpc.second.parameters,
                      data_[rpc.first].parameter_permissions[current_key_]);
     ExcludeDisAllowed();
   }
@@ -343,9 +390,9 @@ void FillNotificationData::ExcludeDisAllowed() {
   Permissions::const_iterator it_end = data_.end();
   // Groups
   for (; it != it_end; ++it) {
-    std::set<HMILevel>& allowed_hmi_level = (*it).second.hmi_permissions[allowed_key_];
+    std::set<HMILevel>& allowed_hmi_level = (*it).second.hmi_permissions[kAllowedKey];
     std::set<HMILevel>& disallowed_hmi_level =
-        (*it).second.hmi_permissions[disallowed_key_];
+      (*it).second.hmi_permissions[kUserDisallowedKey];
     std::set<HMILevel> diff_hmi;
 
     std::set_difference(allowed_hmi_level.begin(), allowed_hmi_level.end(),
@@ -355,9 +402,9 @@ void FillNotificationData::ExcludeDisAllowed() {
     allowed_hmi_level = diff_hmi;
 
     std::set<Parameter>& allowed_parameters =
-        (*it).second.parameter_permissions[allowed_key_];
+      (*it).second.parameter_permissions[kAllowedKey];
     std::set<Parameter>& disallowed_parameters =
-        (*it).second.parameter_permissions[disallowed_key_];
+      (*it).second.parameter_permissions[kUserDisallowedKey];
 
     std::set<Parameter> diff_params;
 
@@ -371,9 +418,9 @@ void FillNotificationData::ExcludeDisAllowed() {
 }
 
 ProcessFunctionalGroup::ProcessFunctionalGroup(
-    const policy_table::FunctionalGroupings& fg,
-    const std::vector<FunctionalGroupPermission>& group_permissions,
-    Permissions& data)
+  const policy_table::FunctionalGroupings& fg,
+  const std::vector<FunctionalGroupPermission>& group_permissions,
+  Permissions& data)
   : fg_(fg),
     group_permissions_(group_permissions),
     data_(data) {
@@ -391,18 +438,18 @@ bool ProcessFunctionalGroup::operator()(const StringsValueType& group_name) {
   return true;
 }
 
-PermissionState ProcessFunctionalGroup::GetGroupState(
-    const std::string& group_name) {
+GroupConsent ProcessFunctionalGroup::GetGroupState(
+  const std::string& group_name) {
   std::vector<FunctionalGroupPermission>::const_iterator it =
-      group_permissions_.begin();
+    group_permissions_.begin();
   std::vector<FunctionalGroupPermission>::const_iterator it_end =
-      group_permissions_.end();
+    group_permissions_.end();
   for (; it != it_end; ++it) {
     if (group_name == (*it).group_name) {
       return (*it).state;
     }
   }
-  return kUndefined;
+  return kGroupUndefined;
 }
 
 FunctionalGroupInserter::FunctionalGroupInserter(
@@ -416,6 +463,22 @@ void FunctionalGroupInserter::operator()(const StringsValueType& group_name) {
   if (std::find_if(preconsented_.begin(), preconsented_.end(), name)
       == preconsented_.end()) {
     list_.push_back(group_name);
+  }
+}
+
+void FillFunctionalGroupPermissions(FunctionalGroupIDs& ids,
+                                    FunctionalGroupNames& names,
+                                    GroupConsent state,
+                                    std::vector<FunctionalGroupPermission>& permissions) {
+  FunctionalGroupIDs::const_iterator it = ids.begin();
+  FunctionalGroupIDs::const_iterator it_end = ids.end();
+  for (; it != it_end; ++it) {
+    FunctionalGroupPermission current_group;
+    current_group.group_id = *it;
+    current_group.group_alias = names[*it].first;
+    current_group.group_name = names[*it].second;
+    current_group.state = state;
+    permissions.push_back(current_group);
   }
 }
 

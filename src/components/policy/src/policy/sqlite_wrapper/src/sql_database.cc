@@ -94,5 +94,9 @@ sqlite3* SQLDatabase::conn() const {
   return conn_;
 }
 
+void SQLDatabase::set_path(const std::string& path) {
+  databasename_ = path +  databasename_;
+}
+
 }  // namespace dbms
 }  // namespace policy

@@ -88,6 +88,12 @@ class SQLDatabase {
    */
   SQLError LastError() const;
 
+  /**
+   * Sets path to database
+   * If the database is already opened then need reopen it
+   */
+  void set_path(const std::string& path);
+
  protected:
   /**
    * Gets connection to the SQLite database

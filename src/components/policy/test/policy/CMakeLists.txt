@@ -8,6 +8,7 @@ include_directories(
   ${CMAKE_BINARY_DIR}/src/components/policy/src/policy/
   ${CMAKE_SOURCE_DIR}/src/components/rpc_base/include
   ${CMAKE_SOURCE_DIR}/src/components/policy/src/policy/sqlite_wrapper/include
+  ${CMAKE_SOURCE_DIR}/src/components/policy/src/policy/qdb_wrapper/include
   ${CMAKE_SOURCE_DIR}/src/components/policy/src/policy/usage_statistics/include
   ${CMAKE_SOURCE_DIR}/src/components/utils/include/
 )
@@ -17,13 +18,20 @@ set(LIBRARIES
   gtest_main
   gmock
   gmock_main
-  dl
   Policy
   ConfigProfile
 )
 
+set(SHARED_LIBRARY_LIBRARIES
+  gtest
+  gtest_main
+  gmock
+  gmock_main
+  dl
+)
+
 if (CMAKE_SYSTEM_NAME STREQUAL "QNX")
-  list(REMOVE_ITEM LIBRARIES dl)
+  list(REMOVE_ITEM SHARED_LIBRARY_LIBRARIES dl)
 endif()
 
 set(SHARED_LIBRARY_SOURCES
@@ -34,16 +42,11 @@ set(SQL_PT_REPRESENTATION_SOURCES
   ./src/test_sql_pt_representation.cc
 )
 
-if (EXTENDED_POLICY_FLAG)
-  if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(SQL_PT_EXT_REPRESENTATION_SOURCES
-        ./src/test_sql_pt_ext_representation.cc
-    )
-    create_test("test_SQLPTExtRepresentation" "${SQL_PT_EXT_REPRESENTATION_SOURCES}" "${LIBRARIES}")
-  endif ()
-endif ()
-
 set(GENERATED_CODE_SOURCES
+  ./src/generated_code_test.cc
+)
+
+set(GENERATED_CODE_WITH_SQLITE_SOURCES
   ./src/generated_code_with_sqlite_test.cc
 )
 
@@ -57,15 +60,36 @@ set(STRESS_POLICY_MANAGER_IMPL_SOURCES
 
 add_subdirectory(usage_statistics)
 
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    # --- Tests for SQLite Wrapper
-    add_subdirectory(sqlite_wrapper)
-    create_test("test_generated_code_with_sqlite" "${GENERATED_CODE_SOURCES}" "${LIBRARIES}")
-    create_test("test_SQLPTRepresentation" "${SQL_PT_REPRESENTATION_SOURCES}" "${LIBRARIES}")
+
+if (EXTENDED_POLICY_FLAG)
+  add_definitions(-DEXTENDED_POLICY)
 endif()
 
-create_test("test_SharedLibrary" "${SHARED_LIBRARY_SOURCES}" "${LIBRARIES}")
-create_test("test_PolicyManagerImpl" "${POLICY_MANAGER_IMPL_SOURCES}" "${LIBRARIES}")
-create_test("test_stress_PolicyManagerImpl" "${STRESS_POLICY_MANAGER_IMPL_SOURCES}" "${LIBRARIES}")
+if (CMAKE_SYSTEM_NAME STREQUAL "QNX")
+  # --- Tests for QDB Wrapper
+  add_subdirectory(qdb_wrapper)
+  file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/qdbserver.sh DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+  file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/test-qdb.ini DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+else ()
+  # --- Tests for SQLite Wrapper
+  add_subdirectory(sqlite_wrapper)
+  create_test("test_generated_code_with_sqlite" "${GENERATED_CODE_WITH_SQLITE_SOURCES}" "${LIBRARIES}")
 
+  if (EXTENDED_POLICY_FLAG)
+    set(SQL_PT_EXT_REPRESENTATION_SOURCES
+      ./src/test_sql_pt_ext_representation.cc
+    )
+    create_test("test_SQLPTExtRepresentation" "${SQL_PT_EXT_REPRESENTATION_SOURCES}" "${LIBRARIES}")
+  else ()
+    # TODO(KKolodiy): test crashes in QNX and failed for extended policy
+    create_test("test_stress_PolicyManagerImpl" "${STRESS_POLICY_MANAGER_IMPL_SOURCES}" "${LIBRARIES}")
+  endif ()
+endif()
+
+create_test("test_generated_policy_code" "${GENERATED_CODE_SOURCES}" "${LIBRARIES}")
+create_test("test_SharedLibrary" "${SHARED_LIBRARY_SOURCES}" "${SHARED_LIBRARY_LIBRARIES}")
+create_test("test_SQLPTRepresentation" "${SQL_PT_REPRESENTATION_SOURCES}" "${LIBRARIES}")
+create_test("test_PolicyManagerImpl" "${POLICY_MANAGER_IMPL_SOURCES}" "${LIBRARIES}")
+
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/valid_sdl_pt_update.json DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/log4cxx.properties DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

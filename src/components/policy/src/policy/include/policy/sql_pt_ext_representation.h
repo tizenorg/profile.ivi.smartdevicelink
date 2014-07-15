@@ -39,119 +39,124 @@
 
 namespace policy {
 
-typedef std::vector<uint32_t> FunctionalGroupIDs;
-typedef std::map<uint32_t, std::pair<std::string, std::string> > FunctionalGroupNames;
-
 class SQLPTExtRepresentation : public SQLPTRepresentation,
-    public PTExtRepresentation {
- public:
-  bool CanAppKeepContext(const std::string& app_id);
-  bool CanAppStealFocus(const std::string& app_id);
-  bool GetDefaultHMI(const std::string& policy_app_id,
-                     std::string* default_hmi);
-  bool GetPriority(const std::string& policy_app_id, std::string* priority);
-  bool ResetUserConsent();
-  bool GetUserPermissionsForDevice(const std::string& device_id,
-                                   StringArray* consented_groups = NULL,
-                                   StringArray* disallowed_groups = NULL);
+  public PTExtRepresentation {
+  public:
+    bool CanAppKeepContext(const std::string& app_id);
+    bool CanAppStealFocus(const std::string& app_id);
+    bool GetDefaultHMI(const std::string& policy_app_id,
+                       std::string* default_hmi);
+    bool GetPriority(const std::string& policy_app_id, std::string* priority);
+    bool ResetUserConsent();
+    bool GetUserPermissionsForDevice(const std::string& device_id,
+                                     StringArray* consented_groups = NULL,
+                                     StringArray* disallowed_groups = NULL);
 
-  bool GetUserPermissionsForApp(
+    bool GetUserPermissionsForApp(
       const std::string& device_id, const std::string& policy_app_id,
-      std::vector<FunctionalGroupPermission>& permissions);
+      FunctionalIdType* group_types);
 
-  bool GetDeviceGroupsFromPolicies(policy_table::Strings* groups = NULL,
-                                   policy_table::Strings* preconsented_groups =
-                                   NULL);
-  bool SetDeviceData(const std::string& device_id, const std::string& hardware =
+    bool GetDeviceGroupsFromPolicies(policy_table::Strings* groups = NULL,
+                                     policy_table::Strings* preconsented_groups =
+                                       NULL);
+    bool SetDeviceData(const std::string& device_id, const std::string& hardware =
                          "",
-                     const std::string& firmware = "", const std::string& os =
+                       const std::string& firmware = "", const std::string& os =
                          "",
-                     const std::string& os_version = "",
-                     const std::string& carrier = "",
-                     const uint32_t number_of_ports = 0);
-  bool SetUserPermissionsForDevice(const std::string& device_id,
-                                   const StringArray& consented_groups =
+                       const std::string& os_version = "",
+                       const std::string& carrier = "",
+                       const uint32_t number_of_ports = 0);
+    bool SetUserPermissionsForDevice(const std::string& device_id,
+                                     const StringArray& consented_groups =
                                        StringArray(),
-                                   const StringArray& disallowed_groups =
+                                     const StringArray& disallowed_groups =
                                        StringArray());
 
-  bool SetUserPermissionsForApp(const PermissionConsent& permissions);
+    bool ReactOnUserDevConsentForApp(const std::string& app_id,
+                                     bool is_device_allowed);
 
-  std::vector<UserFriendlyMessage> GetUserFriendlyMsg(
+    bool SetUserPermissionsForApp(const PermissionConsent& permissions);
+
+    std::vector<UserFriendlyMessage> GetUserFriendlyMsg(
       const std::vector<std::string>& msg_codes, const std::string& language);
 
-  bool IncreaseStatisticsData(StatisticsType type) {
-    return true;
-  }
-  bool SetAppRegistrationLanguage(const std::string& app_id, LanguageType type,
-                                  const std::string& language) {
-    return true;
-  }
+    bool IncreaseStatisticsData(StatisticsType type) {
+      return true;
+    }
+    bool SetAppRegistrationLanguage(const std::string& app_id, LanguageType type,
+                                    const std::string& language) {
+      return true;
+    }
 
-  bool SetMetaInfo(const std::string& ccpu_version,
-                   const std::string& wers_country_code,
-                   const std::string& language);
+    bool SetMetaInfo(const std::string& ccpu_version,
+                     const std::string& wers_country_code,
+                     const std::string& language);
 
-  bool SetSystemLanguage(const std::string& language);
+    bool SetSystemLanguage(const std::string& language);
 
-  int GetKmFromSuccessfulExchange() {
-    return true;
-  }
-  int GetDayFromScsExchange() {
-    return true;
-  }
-  int GetIgnitionsFromScsExchange() {
-    return true;
-  }
+    int GetKmFromSuccessfulExchange() {
+      return true;
+    }
+    int GetDayFromScsExchange() {
+      return true;
+    }
+    int GetIgnitionsFromScsExchange() {
+      return true;
+    }
 
-  void Increment(const std::string& type) const;
-  void Increment(const std::string& app_id, const std::string& type) const;
-  void Set(const std::string& app_id, const std::string& type,
-           const std::string& value) const;
-  void Add(const std::string& app_id, const std::string& type,
-           int seconds) const;
+    bool GetFunctionalGroupNames(FunctionalGroupNames& names);
+    bool CleanupUnpairedDevices(const DeviceIds& device_ids);
 
- private:
-  void GatherModuleMeta(policy_table::ModuleMeta* meta) const;
-  bool GatherApplicationPolicies(policy_table::ApplicationPolicies* apps) const;
-  void GatherPreconsentedGroup(const std::string& app_id,
-                               policy_table::Strings* groups) const;
-  bool GatherUsageAndErrorCounts(
+    void Increment(const std::string& type) const;
+    void Increment(const std::string& app_id, const std::string& type) const;
+    void Set(const std::string& app_id, const std::string& type,
+             const std::string& value) const;
+    void Add(const std::string& app_id, const std::string& type,
+             int seconds) const;
+    bool SetDefaultPolicy(const std::string& app_id);
+    bool SetPredataPolicy(const std::string& app_id);
+    bool SetIsPredata(const std::string& app_id, bool is_pre_data);
+    bool IsPredataPolicy(const std::string& app_id) const;
+
+  private:
+    void GatherModuleMeta(policy_table::ModuleMeta* meta) const;
+    void GatherPreconsentedGroup(const std::string& app_id,
+                                 policy_table::Strings* groups) const;
+    bool GatherUsageAndErrorCounts(
       policy_table::UsageAndErrorCounts* counts) const;
-  bool GatherAppLevels(policy_table::AppLevels* apps) const;
-  void GatherDeviceData(policy_table::DeviceData* data) const;
-  void GatherConsentGroup(const std::string& device_id,
-                          policy_table::UserConsentRecords* records) const;
-  bool SaveDeviceData(const policy_table::DeviceData& devices);
-  bool SaveConsentGroup(const std::string& device_id,
-                        const policy_table::UserConsentRecords& records);
-  bool SaveApplicationPolicies(const policy_table::ApplicationPolicies& apps);
-  bool SavePreconsentedGroup(const std::string& app_id,
-                             const policy_table::Strings& groups);
-  bool SaveMessageString(const std::string& type, const std::string& lang,
-                         const policy_table::MessageString& strings);
+    bool GatherAppLevels(policy_table::AppLevels* apps) const;
+    void GatherDeviceData(policy_table::DeviceData* data) const;
+    void GatherConsentGroup(const std::string& device_id,
+                            policy_table::UserConsentRecords* records) const;
+    bool GatherApplicationPolicies(policy_table::ApplicationPolicies* apps) const;
+    bool SaveDeviceData(const policy_table::DeviceData& devices);
+    bool SaveConsentGroup(const std::string& device_id,
+                          const policy_table::UserConsentRecords& records);
+    bool SaveApplicationPolicies(const policy_table::ApplicationPolicies& apps);
+    bool SavePreconsentedGroup(const std::string& app_id,
+                               const policy_table::Strings& groups);
+    bool SaveMessageString(const std::string& type, const std::string& lang,
+                           const policy_table::MessageString& strings);
 
-  bool IsExistAppLevel(const std::string& app_id) const;
+    bool IsExistAppLevel(const std::string& app_id) const;
 
-  bool GetAllAppGroups(const std::string& policy_app_id,
-                       FunctionalGroupIDs& all_groups);
+    bool GetAllAppGroups(const std::string& policy_app_id,
+                         FunctionalGroupIDs& all_groups);
 
-  bool GetConsentedGroups(const std::string& policy_app_id,
-                          const std::string& device_id,
-                          FunctionalGroupIDs& allowed_groups,
-                          FunctionalGroupIDs& disallowed_groups);
+    bool GetConsentedGroups(const std::string& policy_app_id,
+                            const std::string& device_id,
+                            FunctionalGroupIDs& allowed_groups,
+                            FunctionalGroupIDs& disallowed_groups);
 
-  bool GetPreconsentedGroups(const std::string& policy_app_id,
-                             FunctionalGroupIDs& preconsented_groups);
+    bool GetPreconsentedGroups(const std::string& policy_app_id,
+                               FunctionalGroupIDs& preconsented_groups);
 
-  bool GetFunctionalGroupNames(FunctionalGroupNames& names);
-
-  void FillFunctionalGroupPermissions(
+    void FillFunctionalGroupPermissions(
       FunctionalGroupIDs& ids, FunctionalGroupNames& names,
-      PermissionState state,
+      GroupConsent state,
       std::vector<FunctionalGroupPermission>& permissions);
-  bool CountUnconsentedGroups(const std::string& policy_app_id,
-                              int* result) const;
+    bool CountUnconsentedGroups(const std::string& policy_app_id,
+                                int* result) const;
 };
 
 }  // namespace policy
