@@ -34,21 +34,19 @@
 
 #include "hmi_message_handler/messagebroker_adapter.h"
 #include "config_profile/profile.h"
+#include "utils/logger.h"
 
 namespace hmi_message_handler {
 
+CREATE_LOGGERPTR_GLOBAL(logger_, "HMIMessageHandler")
+
 typedef NsMessageBroker::CMessageBrokerController MessageBrokerController;
 
-#ifdef ENABLE_LOG
-log4cxx::LoggerPtr MessageBrokerAdapter::logger_ = log4cxx::LoggerPtr(
-    log4cxx::Logger::getLogger("HMIMessageHandler"));
-#endif // ENABLE_LOG
-
 MessageBrokerAdapter::MessageBrokerAdapter(HMIMessageHandler* handler_param,
-                                           const std::string& server_address,
-                                           uint16_t port)
-    : MessageBrokerController(server_address, port, "SDL"),
-      HMIMessageAdapter(handler_param) {
+    const std::string& server_address,
+    uint16_t port)
+  : MessageBrokerController(server_address, port, "SDL"),
+    HMIMessageAdapter(handler_param) {
   LOG4CXX_INFO(logger_, "Created MessageBrokerAdapter");
 }
 
@@ -56,7 +54,7 @@ MessageBrokerAdapter::~MessageBrokerAdapter() {
 }
 
 void MessageBrokerAdapter::SendMessageToHMI(
-     hmi_message_handler::MessageSharedPointer message) {
+  hmi_message_handler::MessageSharedPointer message) {
   LOG4CXX_INFO(logger_, "MessageBrokerAdapter::sendMessageToHMI");
   /*if (!message) {
    // TODO(PV): LOG
@@ -74,7 +72,7 @@ void MessageBrokerAdapter::SendMessageToHMI(
 }
 
 void MessageBrokerAdapter::processResponse(std::string method,
-                                           Json::Value& root) {
+    Json::Value& root) {
   LOG4CXX_INFO(logger_, "MessageBrokerAdapter::processResponse");
   ProcessRecievedFromMB(root);
 }
@@ -104,14 +102,12 @@ void MessageBrokerAdapter::SubscribeTo() {
   MessageBrokerController::subscribeTo("UI.OnTouchEvent");
   MessageBrokerController::subscribeTo("UI.OnResetTimeout");
   MessageBrokerController::subscribeTo("BasicCommunication.OnAppDeactivated");
-  MessageBrokerController::subscribeTo(
-      "BasicCommunication.OnStartDeviceDiscovery");
+  MessageBrokerController::subscribeTo("BasicCommunication.OnStartDeviceDiscovery");
   MessageBrokerController::subscribeTo("BasicCommunication.OnUpdateDeviceList");
   MessageBrokerController::subscribeTo("BasicCommunication.OnFindApplications");
   MessageBrokerController::subscribeTo("BasicCommunication.OnAppActivated");
   MessageBrokerController::subscribeTo("BasicCommunication.OnExitApplication");
-  MessageBrokerController::subscribeTo(
-      "BasicCommunication.OnExitAllApplications");
+  MessageBrokerController::subscribeTo("BasicCommunication.OnExitAllApplications");
   MessageBrokerController::subscribeTo("BasicCommunication.OnDeviceChosen");
   MessageBrokerController::subscribeTo("UI.OnLanguageChange");
   MessageBrokerController::subscribeTo("VR.OnLanguageChange");
@@ -127,8 +123,11 @@ void MessageBrokerAdapter::SubscribeTo() {
   MessageBrokerController::subscribeTo("BasicCommunication.OnSystemInfoChanged");
   MessageBrokerController::subscribeTo("SDL.OnAppPermissionConsent");
   MessageBrokerController::subscribeTo("SDL.OnAllowSDLFunctionality");
+  MessageBrokerController::subscribeTo("SDL.OnReceivedPolicyUpdate");
   MessageBrokerController::subscribeTo("SDL.OnSystemError");
   MessageBrokerController::subscribeTo("SDL.AddStatisticsInfo");
+  MessageBrokerController::subscribeTo("SDL.OnDeviceStateChanged");
+  MessageBrokerController::subscribeTo("SDL.OnPolicyUpdate");
 
   LOG4CXX_INFO(logger_, "Subscribed to notifications.");
 }
@@ -155,18 +154,18 @@ void MessageBrokerAdapter::ProcessRecievedFromMB(Json::Value& root) {
     return;
   }
 
+  // Messages from HMI (sent through message broker) have no priority so far
+  // assign default priority
+  hmi_message_handler::MessageSharedPointer message = hmi_message_handler::MessageSharedPointer(new application_manager::Message(
+        protocol_handler::MessagePriority::kDefault));
+  // message->set_message_type()
+  message->set_json_message(message_string);
+  message->set_protocol_version(application_manager::ProtocolVersion::kHMI);
+
   if (!handler()) {
     // WARNING
     return;
   }
-
-  // Messages from HMI (sent through message broker) have no priority so far
-  // assign default priority
-  hmi_message_handler::MessageSharedPointer message = hmi_message_handler::MessageSharedPointer(new application_manager::Message(
-      protocol_handler::MessagePriority::kDefault));
-  // message->set_message_type()
-  message->set_json_message(message_string);
-  message->set_protocol_version(application_manager::ProtocolVersion::kHMI);
 
   handler()->OnMessageReceived(message);
   LOG4CXX_INFO(logger_, "Successfully sent to observer");
