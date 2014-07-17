@@ -30,27 +30,30 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SRC_COMPONENTS_TIME_TESTER_INCLUDE_TIME_TESTER_APPLICATION_MANAGER_MECTRIC_WRAPPER_H_
-#define SRC_COMPONENTS_TIME_TESTER_INCLUDE_TIME_TESTER_APPLICATION_MANAGER_MECTRIC_WRAPPER_H_
+#ifndef SRC_COMPONENTS_TIME_TESTER_INCLUDE_TIME_TESTER_MECTRIC_H_
+#define SRC_COMPONENTS_TIME_TESTER_INCLUDE_TIME_TESTER_MECTRIC_H_
 
 #include <string>
-
-#include "metric_wrapper.h"
-#include "application_manager_observer.h"
-
+#include "utils/resource_usage.h"
+#include "json/json.h"
 
 namespace time_tester {
 
-class ApplicationManagerObserver;
-
-class ApplicationManagerMetricWrapper: public MetricWrapper {
-
+class MetricWrapper {
+  utils::ResourseUsage* resources;
   public:
-    utils::SharedPtr<application_manager::AMMetricObserver::MessageMetric> message_metric;
-
+    MetricWrapper();
+    /*
+     * @brief get current cpu and memory info and store it as member
+     */
+    bool grabResources();
+    virtual std::string GetStyledString();
+    ~MetricWrapper();
   protected:
     virtual Json::Value GetJsonMetric();
+    void Clear();
 };
 
-}
-#endif  // SRC_COMPONENTS_TIME_TESTER_INCLUDE_TIME_TESTER_APPLICATION_MANAGER_MECTRIC_WRAPPER_H_
+
+}  // namespace time_tester
+#endif  // SRC_COMPONENTS_TIME_TESTER_INCLUDE_TIME_TESTER_MECTRIC_H_
