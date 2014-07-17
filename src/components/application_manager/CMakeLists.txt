@@ -23,7 +23,6 @@ include_directories (
   ${CMAKE_BINARY_DIR}/src/components/
   ${CMAKE_SOURCE_DIR}/src/components/policy/src/policy/include/
   ${CMAKE_SOURCE_DIR}/src/components/policy/src/policy/usage_statistics/include/
-  ${CMAKE_BINARY_DIR}/src/components/policy/src/policy/
 )
 
 set (SOURCES
@@ -49,11 +48,17 @@ set (POLICIES_MANAGER
 )
 
 if (EXTENDED_POLICY_FLAG)
+  include_directories(
+    ${CMAKE_SOURCE_DIR}/src/components/policy/src/policy/policy_table/table_struct_ext
+  )
   list(APPEND POLICIES_MANAGER
     ./src/policies/pt_exchange_handler_ext.cc
     ./src/policies/pt_exchange_handler_impl.cc
   )
 else ()
+  include_directories(
+    ${CMAKE_SOURCE_DIR}/src/components/policy/src/policy/policy_table/table_struct
+  )
   list(APPEND POLICIES_MANAGER
     ./src/policies/pt_exchange_handler_impl.cc
   )
@@ -414,5 +419,6 @@ add_library("ApplicationManager" ${SOURCES} ${MOBILE_COMMANDS_SOURCES} ${HMI_COM
 target_link_libraries("ApplicationManager" ${LIBRARIES})
 
 if(ENABLE_LOG)
-  target_link_libraries("ApplicationManager" log4cxx)
+  add_dependencies("ApplicationManager" liblog4cxx)
+  target_link_libraries("ApplicationManager" log4cxx -L${LOG4CXX_LIBS_DIRECTORY})
 endif()

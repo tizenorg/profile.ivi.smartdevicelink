@@ -604,7 +604,13 @@ mobile_apis::Result::eType RegisterAppInterfaceRequest::CheckWithPolicyData() {
     policy::PolicyHandler::instance()->policy_manager();
   if (!policy_manager) {
     LOG4CXX_WARN(logger_, "The shared library of policy is not loaded");
+    // TODO(AOleynik): Check is necessary to allow register application in case
+    // of disabled policy
+    // Remove this check, when HMI will support policy
+    if (profile::Profile::instance()->policy_turn_off()) {
     return mobile_apis::Result::WARNINGS;
+  }
+    return mobile_apis::Result::DISALLOWED;
   }
   const bool init_result = policy_manager->GetInitialAppData(
                              message[strings::msg_params][strings::app_id].asString(), &app_nicknames,
@@ -767,10 +773,11 @@ RegisterAppInterfaceRequest::ClearParamName(std::string param_name) const {
 
 bool RegisterAppInterfaceRequest::IsApplicationWithSameAppIdRegistered() {
 
-  LOG4CXX_INFO(logger_, "RegisterAppInterfaceRequest::IsApplicationRegistered");
+  LOG4CXX_INFO(logger_, "RegisterAppInterfaceRequest::"
+               "IsApplicationWithSameAppIdRegistered");
 
-  int32_t mobile_app_id = (*message_)[strings::msg_params][strings::app_id]
-                          .asInt();
+  const std::string mobile_app_id = (*message_)[strings::msg_params]
+                                    [strings::app_id].asString();
 
   const std::set<ApplicationSharedPtr>& applications =
     ApplicationManagerImpl::instance()->applications();
@@ -779,7 +786,7 @@ bool RegisterAppInterfaceRequest::IsApplicationWithSameAppIdRegistered() {
   std::set<ApplicationSharedPtr>::const_iterator it_end = applications.end();
 
   for (; it != it_end; ++it) {
-    if (mobile_app_id == (*it)->mobile_app_id()->asInt()) {
+    if (mobile_app_id == (*it)->mobile_app_id()->asString()) {
       return true;
     }
   }
