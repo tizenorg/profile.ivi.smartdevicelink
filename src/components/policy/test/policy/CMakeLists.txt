@@ -5,7 +5,6 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/src/thirdPartyLibs/gmock-1.7.0/gtest/include
   ${CMAKE_SOURCE_DIR}/src/thirdPartyLibs/jsoncpp/include/
   ${CMAKE_SOURCE_DIR}/src/components/policy/src/policy/include/
-  ${CMAKE_BINARY_DIR}/src/components/policy/src/policy/
   ${CMAKE_SOURCE_DIR}/src/components/rpc_base/include
   ${CMAKE_SOURCE_DIR}/src/components/policy/src/policy/sqlite_wrapper/include
   ${CMAKE_SOURCE_DIR}/src/components/policy/src/policy/qdb_wrapper/include
@@ -76,11 +75,13 @@ else ()
   create_test("test_generated_code_with_sqlite" "${GENERATED_CODE_WITH_SQLITE_SOURCES}" "${LIBRARIES}")
 
   if (EXTENDED_POLICY_FLAG)
+  include_directories(${CMAKE_SOURCE_DIR}/src/components/policy/src/policy/policy_table/table_struct_ext)
     set(SQL_PT_EXT_REPRESENTATION_SOURCES
       ./src/test_sql_pt_ext_representation.cc
     )
     create_test("test_SQLPTExtRepresentation" "${SQL_PT_EXT_REPRESENTATION_SOURCES}" "${LIBRARIES}")
   else ()
+  include_directories(${CMAKE_SOURCE_DIR}/src/components/policy/src/policy/policy_table/table_struct)
     # TODO(KKolodiy): test crashes in QNX and failed for extended policy
     create_test("test_stress_PolicyManagerImpl" "${STRESS_POLICY_MANAGER_IMPL_SOURCES}" "${LIBRARIES}")
   endif ()

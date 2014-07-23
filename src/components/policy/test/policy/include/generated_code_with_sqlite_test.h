@@ -32,7 +32,7 @@
 #ifndef GENERATED_CODE_WITH_SQLITE_TEST_H_
 #define GENERATED_CODE_WITH_SQLITE_TEST_H_
 
-#include "policy_table_interface_base/types.h"
+#include "./types.h"
 #include "rpc_base/rpc_base.h"
 #include "sqlite_wrapper/sql_query.h"
 #include "sqlite_wrapper/sql_database.h"

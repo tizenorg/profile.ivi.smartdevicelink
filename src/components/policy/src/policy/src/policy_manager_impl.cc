@@ -32,6 +32,7 @@
 
 #include <algorithm>
 #include <set>
+#include <iterator>
 #include "json/reader.h"
 #include "json/writer.h"
 #include "policy/policy_table.h"
@@ -97,45 +98,30 @@ PolicyManagerImpl::~PolicyManagerImpl() {
 
 bool PolicyManagerImpl::LoadPTFromFile(const std::string& file_name) {
   LOG4CXX_INFO(logger_, "LoadPTFromFile: " << file_name);
+
+  BinaryMessage json_string;
   bool final_result = false;
-  InitResult init_result = policy_table_.pt_data()->Init();
-  switch (init_result) {
-    case InitResult::EXISTS: {
-      LOG4CXX_INFO(logger_, "Policy Table exists, was loaded correctly.");
-      final_result = true;
-      break;
-    }
-    case InitResult::SUCCESS: {
-      BinaryMessage json_string;
-      final_result = file_system::ReadBinaryFile(file_name, json_string);
-      if (!final_result) {
-        LOG4CXX_WARN(logger_, "Failed to read pt file.");
-        utils::SharedPtr<policy_table::Table> table = new policy_table::Table();
-        return final_result;
-      }
-      utils::SharedPtr<policy_table::Table> table = Parse(json_string);
-      if (!table) {
-        LOG4CXX_WARN(logger_, "Failed to parse policy table");
-        utils::SharedPtr<policy_table::Table> table = new policy_table::Table();
-        return false;
-      }
-      final_result = final_result && policy_table_.pt_data()->Save(*table);
-      LOG4CXX_INFO(
-        logger_,
-        "Loading from file was " << (final_result ? "successful" : "unsuccessful"));
-    }
-    break;
-    case InitResult::FAIL:
-    default: {
-      LOG4CXX_WARN(logger_, "Failed to init policy table.");
-      return final_result;
-    }
+  final_result = file_system::ReadBinaryFile(file_name, json_string);
+  if (!final_result) {
+    LOG4CXX_WARN(logger_, "Failed to read pt file.");
+    utils::SharedPtr<policy_table::Table> table = new policy_table::Table();
+    return final_result;
   }
+  utils::SharedPtr<policy_table::Table> table = Parse(json_string);
+  if (!table) {
+    LOG4CXX_WARN(logger_, "Failed to parse policy table");
+    utils::SharedPtr<policy_table::Table> table = new policy_table::Table();
+    return false;
+  }
+  final_result = final_result && policy_table_.pt_data()->Save(*table);
+  LOG4CXX_INFO(
+    logger_,
+    "Loading from file was " << (final_result ? "successful" : "unsuccessful"));
 
   // Initial setting of snapshot data
-  if (!policy_table_snapshot_.valid()) {
+  if (!policy_table_snapshot_) {
     policy_table_snapshot_ = policy_table_.pt_data()->GenerateSnapshot();
-    if (!policy_table_snapshot_.valid()) {
+    if (!policy_table_snapshot_) {
       LOG4CXX_WARN(logger_,
                    "Failed to create initial snapshot of policy table");
       return final_result;
@@ -154,7 +140,7 @@ utils::SharedPtr<policy_table::Table> PolicyManagerImpl::Parse(
   if (reader.parse(json.c_str(), value)) {
     return new policy_table::Table(&value);
   } else {
-    return 0;
+    return utils::SharedPtr<policy_table::Table>();
   }
 }
 
@@ -194,11 +180,11 @@ bool PolicyManagerImpl::LoadPT(const std::string& file,
       .module_config;
 
   bool is_message_part_updated = pt_update->policy_table
-                                 .consumer_friendly_messages.messages.is_initialized();
+                                 .consumer_friendly_messages.is_initialized();
 
   if (is_message_part_updated) {
-    policy_table_snapshot_->policy_table.consumer_friendly_messages.messages =
-      pt_update->policy_table.consumer_friendly_messages.messages;
+    policy_table_snapshot_->policy_table.consumer_friendly_messages->messages =
+      pt_update->policy_table.consumer_friendly_messages->messages;
   }
 
   //policy_table.module_meta
@@ -329,6 +315,20 @@ BinaryMessageSptr PolicyManagerImpl::RequestPTUpdate() {
     return NULL;
   }
 
+  policy_table::ApplicationPolicies& apps = policy_table_snapshot_->policy_table.app_policies;
+  std::map<std::string,
+      rpc::Stringifyable<rpc::Nullable<rpc::policy_table_interface_base::ApplicationParams>>>::iterator it = apps.begin();
+  for (; apps.end() != it; ++it) {
+    if (policy_table_.pt_data()->IsDefaultPolicy(it->first)) {
+      it->second.set_to_string(kDefaultId);
+      continue;
+    }
+    if (policy_table_.pt_data()->IsPredataPolicy(it->first)) {
+      it->second.set_to_string(kPreDataConsentId);
+      continue;
+    }
+  }
+
   if (!exchange_pending_) {
     set_update_required(false);
   }
@@ -336,29 +336,18 @@ BinaryMessageSptr PolicyManagerImpl::RequestPTUpdate() {
   set_exchange_in_progress(true);
   set_exchange_pending(false);
 
-  Json::Value value = policy_table_snapshot_->ToJsonValue();
-
-  policy_table::ApplicationPolicies& apps = policy_table_snapshot_->policy_table.app_policies;
-  std::map<std::string,
-      rpc::Nullable<rpc::policy_table_interface_base::ApplicationParams>>::iterator it = apps.begin();
-  for (; apps.end() != it; ++it) {
-    if (policy_table_.pt_data()->IsDefaultPolicy(it->first)) {
-      printf("\n\t\t\t\tDefault policy of %s\n", it->first.c_str());
-      value["policy_table"]["app_policies"][it->first] = kDefaultId;
-      continue;
-    }
-    if (policy_table_.pt_data()->IsPredataPolicy(it->first)) {
-      printf("\n\t\t\t\tPredata policy of %s\n", it->first.c_str());
-      value["policy_table"]["app_policies"][it->first] = kPreDataConsentId;
-      continue;
-    }
-    Json::Value app_value = it->second.ToJsonValue();
-    value["policy_table"]["app_policies"][it->first] = app_value;
+#ifdef EXTENDED_POLICY
+  // TODO(KKolodiy): Check design for more convenient access to policy ext data
+  PTExtRepresentation* pt_ext = dynamic_cast<PTExtRepresentation*>(policy_table_
+                                .pt_data().get());
+  if (pt_ext) {
+    pt_ext->UnpairedDevicesList(&unpaired_device_ids_);
   }
+#endif  // EXTENDED_POLICY
 
+  Json::Value value = policy_table_snapshot_->ToJsonValue();
   Json::FastWriter writer;
   std::string message_string = writer.write(value);
-  LOG4CXX_INFO(logger_, "\n\n\n\nPT Snapshot " << message_string << "\n\n\n");
   return new BinaryMessage(message_string.begin(), message_string.end());
 }
 
@@ -417,7 +406,7 @@ CheckPermissionResult PolicyManagerImpl::CheckPermissions(
   result.list_of_allowed_params = new std::vector<PTString>();
   std::copy(rpc_permissions[rpc].parameter_permissions[kAllowedKey].begin(),
             rpc_permissions[rpc].parameter_permissions[kAllowedKey].end(),
-            result.list_of_allowed_params->begin());
+            std::back_inserter(*result.list_of_allowed_params));
 
   return result;
 #else
@@ -523,9 +512,9 @@ void PolicyManagerImpl::SendNotificationOnPermissionsUpdated(
                                    default_hmi);
 }
 
-bool PolicyManagerImpl::CleanupUnpairedDevices(const DeviceIds& device_ids) {
+bool PolicyManagerImpl::CleanupUnpairedDevices() {
   LOG4CXX_INFO(logger_, "CleanupUnpairedDevices");
-#if defined (EXTENDED_POLICY)
+#ifdef EXTENDED_POLICY
   PTExtRepresentation* pt_ext = dynamic_cast<PTExtRepresentation*>(policy_table_
                                 .pt_data().get());
   if (!pt_ext) {
@@ -533,10 +522,11 @@ bool PolicyManagerImpl::CleanupUnpairedDevices(const DeviceIds& device_ids) {
     return false;
   }
 
-  return pt_ext->CleanupUnpairedDevices(device_ids);
-#else
-  return policy_table_.pt_data()->CleanupUnpairedDevices(device_ids);
-#endif
+  return pt_ext->CleanupUnpairedDevices(unpaired_device_ids_);
+#else  // EXTENDED_POLICY
+  // For SDL-specific it doesn't matter
+  return true;
+#endif  // EXTENDED_POLICY
 }
 
 PolicyTableStatus PolicyManagerImpl::GetPolicyTableStatus() {
@@ -803,6 +793,93 @@ std::vector<UserFriendlyMessage> PolicyManagerImpl::GetUserFriendlyMessages(
 #endif
   // For basic policy
   return policy_table_.pt_data()->GetUserFriendlyMsg(message_code, language);
+}
+
+void PolicyManagerImpl::GetUserConsentForApp(
+  const std::string& device_id, const std::string& policy_app_id,
+  std::vector<FunctionalGroupPermission>& permissions) {
+  LOG4CXX_INFO(logger_, "GetUserPermissionsForApp");
+#if defined (EXTENDED_POLICY)
+  // TODO(KKolodiy): Check design for more convenient access to policy ext data
+  PTExtRepresentation* pt_ext = dynamic_cast<PTExtRepresentation*>(policy_table_
+                                .pt_data().get());
+  if (pt_ext) {
+    FunctionalIdType group_types;
+    if (!pt_ext->GetUserPermissionsForApp(device_id, policy_app_id,
+                                          &group_types)) {
+      LOG4CXX_WARN(logger_, "Can't get user permissions for app "
+                   << policy_app_id);
+      return;
+    }
+
+    FunctionalGroupIDs all_groups = group_types[kTypeGeneral];
+    FunctionalGroupIDs preconsented_groups = group_types[kTypePreconsented];
+    FunctionalGroupIDs consent_allowed_groups = group_types[kTypeAllowed];
+    FunctionalGroupIDs consent_disallowed_groups = group_types[kTypeDisallowed];
+    FunctionalGroupIDs default_groups = group_types[kTypeDefault];
+    FunctionalGroupIDs predataconsented_groups =
+        group_types[kTypePreDataConsented];
+    FunctionalGroupIDs device_groups = group_types[kTypeDevice];
+
+    std::sort(all_groups.begin(), all_groups.end());
+    std::sort(preconsented_groups.begin(), preconsented_groups.end());
+    std::sort(consent_allowed_groups.begin(), consent_allowed_groups.end());
+    std::sort(consent_disallowed_groups.begin(), consent_disallowed_groups.end());
+    std::sort(default_groups.begin(), default_groups.end());
+    std::sort(predataconsented_groups.begin(), predataconsented_groups.end());
+    std::sort(device_groups.begin(), device_groups.end());
+
+    FunctionalGroupIDs allowed_preconsented;
+    std::set_difference(preconsented_groups.begin(), preconsented_groups.end(),
+                        consent_disallowed_groups.begin(),
+                        consent_disallowed_groups.end(),
+                        std::back_inserter(allowed_preconsented));
+    FunctionalGroupIDs allowed_groups;
+    std::set_union(consent_allowed_groups.begin(), consent_allowed_groups.end(),
+                   allowed_preconsented.begin(), allowed_preconsented.end(),
+                   std::back_inserter(allowed_groups));
+
+    FunctionalGroupIDs first_excluded_groups;
+    std::set_union(default_groups.begin(), default_groups.end(),
+                   predataconsented_groups.begin(), predataconsented_groups.end(),
+                   std::back_inserter(first_excluded_groups));
+    FunctionalGroupIDs excluded_groups;
+    std::set_union(first_excluded_groups.begin(), first_excluded_groups.end(),
+                   device_groups.begin(), device_groups.end(),
+                   std::back_inserter(excluded_groups));
+
+    FunctionalGroupIDs only_needed_groups;
+    std::set_difference(all_groups.begin(), all_groups.end(),
+                        excluded_groups.begin(), excluded_groups.end(),
+                        std::back_inserter(only_needed_groups));
+    FunctionalGroupIDs no_disallowed_groups;
+    std::set_difference(only_needed_groups.begin(), only_needed_groups.end(),
+                        consent_disallowed_groups.begin(),
+                        consent_disallowed_groups.end(),
+                        std::back_inserter(no_disallowed_groups));
+    FunctionalGroupIDs undefined_consent;
+    std::set_difference(no_disallowed_groups.begin(), no_disallowed_groups.end(),
+                        allowed_groups.begin(), allowed_groups.end(),
+                        std::back_inserter(undefined_consent));
+
+    FunctionalGroupNames group_names;
+    if (!pt_ext->GetFunctionalGroupNames(group_names)) {
+      LOG4CXX_WARN(logger_, "Can't get functional group names");
+      return;
+    }
+
+    // Fill result
+    FillFunctionalGroupPermissions(undefined_consent, group_names,
+                                   kGroupUndefined, permissions);
+    FillFunctionalGroupPermissions(allowed_groups, group_names,
+                                   kGroupAllowed, permissions);
+    FillFunctionalGroupPermissions(consent_disallowed_groups, group_names,
+                                   kGroupDisallowed, permissions);
+  }
+#else
+  // For basic policy
+  permissions = std::vector<FunctionalGroupPermission>();
+#endif
 }
 
 void PolicyManagerImpl::GetUserPermissionsForApp(
@@ -1153,8 +1230,9 @@ int PolicyManagerImpl::IsConsentNeeded(const std::string& app_id) {
 #if defined (EXTENDED_POLICY)
   PTExtRepresentation* pt_ext = dynamic_cast<PTExtRepresentation*>(policy_table_
                                 .pt_data().get());
+  const std::string device_id = GetCurrentDeviceId(app_id);
   int count = 0;
-  if (pt_ext->CountUnconsentedGroups(app_id, &count)) {
+  if (pt_ext->CountUnconsentedGroups(app_id, device_id, &count)) {
     return count;
   } else {
     return 0;
@@ -1218,6 +1296,43 @@ bool PolicyManagerImpl::CanAppStealFocus(const std::string& app_id) {
 #else
   return false;
 #endif
+}
+
+void PolicyManagerImpl::MarkUnpairedDevice(const std::string& device_id) {
+#ifdef EXTENDED_POLICY
+  // TODO(KKolodiy): Check design for more convenient access to policy ext data
+  PTExtRepresentation* pt_ext = dynamic_cast<PTExtRepresentation*>(policy_table_
+                                .pt_data().get());
+  if (pt_ext) {
+    pt_ext->SetUnpairedDevice(device_id);
+    SetUserConsentForDevice(device_id, false);
+  }
+#endif  // EXTENDED_POLICY
+}
+
+bool PolicyManagerImpl::ResetPT(const std::string& file_name) {
+  return policy_table_.pt_data()->Clear() && LoadPTFromFile(file_name);
+}
+
+bool PolicyManagerImpl::InitPT(const std::string& file_name) {
+  bool ret = false;
+  InitResult init_result = policy_table_.pt_data()->Init();
+  switch (init_result) {
+    case InitResult::EXISTS: {
+      LOG4CXX_INFO(logger_, "Policy Table exists, was loaded correctly.");
+      ret = true;
+    } break;
+    case InitResult::SUCCESS: {
+      LOG4CXX_INFO(logger_, "Policy Table was inited successfully");
+      ret = LoadPTFromFile(file_name);
+    } break;
+    case InitResult::FAIL:
+    default: {
+      LOG4CXX_ERROR(logger_, "Failed to init policy table.");
+      ret = false;
+    }
+  }
+  return ret;
 }
 
 }  //  namespace policy

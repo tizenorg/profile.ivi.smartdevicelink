@@ -44,16 +44,14 @@ const std::string kCreateSchema =
   "  `os` VARCHAR(45), "
   "  `os_version` VARCHAR(45), "
   "  `carrier` VARCHAR(45), "
-  "  `max_number_rfcom_ports` INTEGER "
+  "  `max_number_rfcom_ports` INTEGER,"
+  "  `unpaired` BOOL "
   "); "
   "CREATE TABLE IF NOT EXISTS `usage_and_error_count`( "
   "  `count_of_iap_buffer_full` INTEGER, "
   "  `count_sync_out_of_memory` INTEGER, "
   "  `count_of_sync_reboots` INTEGER "
   "); "
-  "INSERT OR IGNORE INTO `usage_and_error_count` ( "
-  "  `count_of_iap_buffer_full`, `count_sync_out_of_memory`, "
-  "  `count_of_sync_reboots`) VALUES (0, 0, 0); "
   "CREATE TABLE IF NOT EXISTS `module_meta`( "
   "  `ccpu_version` VARCHAR(45), "
   "  `language` VARCHAR(45), "
@@ -64,10 +62,6 @@ const std::string kCreateSchema =
   "  `vin` VARCHAR(45),"
   "  `flag_update_required` BOOL NOT NULL "
   "); "
-  "INSERT OR IGNORE INTO `module_meta` (`pt_exchanged_at_odometer_x`, "
-  "  `pt_exchanged_x_days_after_epoch`, `ignition_cycles_since_last_exchange`,"
-  "  `flag_update_required`) "
-  "  VALUES (0, 0, 0, 0); "
   "CREATE TABLE IF NOT EXISTS `module_config`( "
   "  `preloaded_pt` BOOL NOT NULL, "
   "  `exchange_after_x_ignition_cycles` INTEGER NOT NULL, "
@@ -76,12 +70,8 @@ const std::string kCreateSchema =
   "  `timeout_after_x_seconds` INTEGER NOT NULL, "
   "  `vehicle_make` VARCHAR(45), "
   "  `vehicle_model` VARCHAR(45), "
-  "  `vehicle_year` INTEGER "
+  "  `vehicle_year` VARCHAR(4) "
   "); "
-  "INSERT OR IGNORE INTO `module_config` (`preloaded_pt`, "
-  "  `exchange_after_x_ignition_cycles`, `exchange_after_x_kilometers`, "
-  "  `exchange_after_x_days`, `timeout_after_x_seconds`) "
-  "  VALUES(1, 0, 0, 0, 0); "
   "CREATE TABLE IF NOT EXISTS `functional_group`( "
   "  `id` INTEGER PRIMARY KEY NOT NULL, "
   "  `user_consent_prompt` TEXT UNIQUE ON CONFLICT REPLACE, "
@@ -90,19 +80,9 @@ const std::string kCreateSchema =
   "CREATE TABLE IF NOT EXISTS `priority`( "
   "  `value` VARCHAR(45) PRIMARY KEY NOT NULL "
   "); "
-  "INSERT OR IGNORE INTO `priority`(`value`) VALUES ('EMERGENCY');"
-  "INSERT OR IGNORE INTO `priority`(`value`) VALUES ('NAVIGATION');"
-  "INSERT OR IGNORE INTO `priority`(`value`) VALUES ('VOICECOMMUNICATION');"
-  "INSERT OR IGNORE INTO `priority`(`value`) VALUES ('COMMUNICATION');"
-  "INSERT OR IGNORE INTO `priority`(`value`) VALUES ('NORMAL');"
-  "INSERT OR IGNORE INTO `priority`(`value`) VALUES ('NONE');"
   "CREATE TABLE IF NOT EXISTS `hmi_level`( "
   "  `value` VARCHAR(45) PRIMARY KEY NOT NULL "
   "); "
-  "INSERT OR IGNORE INTO `hmi_level`(`value`) VALUES ('FULL');"
-  "INSERT OR IGNORE INTO `hmi_level`(`value`) VALUES ('LIMITED');"
-  "INSERT OR IGNORE INTO `hmi_level`(`value`) VALUES ('BACKGROUND');"
-  "INSERT OR IGNORE INTO `hmi_level`(`value`) VALUES ('NONE');"
   "CREATE TABLE IF NOT EXISTS `notifications_by_priority`( "
   "  `priority_value` VARCHAR(45) PRIMARY KEY NOT NULL, "
   "  `value` INTEGER NOT NULL, "
@@ -122,7 +102,6 @@ const std::string kCreateSchema =
   "CREATE TABLE IF NOT EXISTS `version`( "
   "  `number` VARCHAR(45) NOT NULL "
   "); "
-  "INSERT OR IGNORE INTO `version` (`number`) VALUES('0'); "
   "CREATE TABLE IF NOT EXISTS `rpc`( "
   "  `id` INTEGER PRIMARY KEY NOT NULL, "
   "  `name` VARCHAR(45) NOT NULL, "
@@ -152,7 +131,7 @@ const std::string kCreateSchema =
   "  `is_default` BOOLEAN, "
   "  `is_predata` BOOLEAN, "
   "  `memory_kb` INTEGER NOT NULL, "
-  "  `watchdog_timer_ms` INTEGER NOT NULL, "
+  "  `heart_beat_timeout_ms` INTEGER NOT NULL, "
   "  `certificate` VARCHAR(45), "
   "  CONSTRAINT `fk_application_hmi_level1` "
   "    FOREIGN KEY(`default_hmi`) "
@@ -329,6 +308,31 @@ const std::string kCreateSchema =
   "  ON `message`(`message_type_name`);"
   "COMMIT;";
 
+const std::string kInsertInitData =
+  "INSERT OR IGNORE INTO `usage_and_error_count` ( "
+  "  `count_of_iap_buffer_full`, `count_sync_out_of_memory`, "
+  "  `count_of_sync_reboots`) VALUES (0, 0, 0); "
+  "INSERT OR IGNORE INTO `module_meta` (`pt_exchanged_at_odometer_x`, "
+  "  `pt_exchanged_x_days_after_epoch`, `ignition_cycles_since_last_exchange`,"
+  "  `flag_update_required`) "
+  "  VALUES (0, 0, 0, 0); "
+  "INSERT OR IGNORE INTO `module_config` (`preloaded_pt`, "
+  "  `exchange_after_x_ignition_cycles`, `exchange_after_x_kilometers`, "
+  "  `exchange_after_x_days`, `timeout_after_x_seconds`) "
+  "  VALUES(1, 0, 0, 0, 0); "
+  "INSERT OR IGNORE INTO `priority`(`value`) VALUES ('EMERGENCY'); "
+  "INSERT OR IGNORE INTO `priority`(`value`) VALUES ('NAVIGATION'); "
+  "INSERT OR IGNORE INTO `priority`(`value`) VALUES ('VOICECOMMUNICATION'); "
+  "INSERT OR IGNORE INTO `priority`(`value`) VALUES ('COMMUNICATION'); "
+  "INSERT OR IGNORE INTO `priority`(`value`) VALUES ('NORMAL'); "
+  "INSERT OR IGNORE INTO `priority`(`value`) VALUES ('NONE'); "
+  "INSERT OR IGNORE INTO `hmi_level`(`value`) VALUES ('FULL'); "
+  "INSERT OR IGNORE INTO `hmi_level`(`value`) VALUES ('LIMITED'); "
+  "INSERT OR IGNORE INTO `hmi_level`(`value`) VALUES ('BACKGROUND'); "
+  "INSERT OR IGNORE INTO `hmi_level`(`value`) VALUES ('NONE'); "
+  "INSERT OR IGNORE INTO `version` (`number`) VALUES('0'); "
+  "";
+
 const std::string kDropSchema =
   "BEGIN; "
   "DROP INDEX IF EXISTS `message.fk_messages_languages1_idx`; "
@@ -376,7 +380,36 @@ const std::string kDropSchema =
   "DROP TABLE IF EXISTS `module_meta`; "
   "DROP TABLE IF EXISTS `usage_and_error_count`; "
   "DROP TABLE IF EXISTS `device`; "
-  "COMMIT;";
+  "COMMIT; "
+  "VACUUM;";
+
+const std::string kDeleteData =
+  "BEGIN; "
+  "DELETE FROM `message`; "
+  "DELETE FROM `endpoint`; "
+  "DELETE FROM `consent_group`; "
+  "DELETE FROM `app_type`; "
+  "DELETE FROM `nickname`; "
+  "DELETE FROM `app_level`; "
+  "DELETE FROM `device_consent_group`; "
+  "DELETE FROM `seconds_between_retry`; "
+  "DELETE FROM `preconsented_group`; "
+  "DELETE FROM `app_group`; "
+  "DELETE FROM `application`; "
+  "DELETE FROM `rpc`; "
+  "DELETE FROM `version`; "
+  "DELETE FROM `message_type`; "
+  "DELETE FROM `language`; "
+  "DELETE FROM `notifications_by_priority`; "
+  "DELETE FROM `hmi_level`; "
+  "DELETE FROM `priority`; "
+  "DELETE FROM `functional_group`; "
+  "DELETE FROM `module_config`; "
+  "DELETE FROM `module_meta`; "
+  "DELETE FROM `usage_and_error_count`; "
+  "DELETE FROM `device`; "
+  "COMMIT; "
+  "VACUUM;";
 
 const std::string kCheckDBIntegrity = "PRAGMA integrity_check";
 
@@ -409,7 +442,7 @@ const std::string kInsertRpcWithParameter =
 
 const std::string kInsertApplication =
   "INSERT OR IGNORE INTO `application` (`id`, `is_revoked`, `memory_kb`,"
-  " `watchdog_timer_ms`, `certificate`) VALUES (?,?,?,?,?)";
+  " `heart_beat_timeout_ms`, `certificate`) VALUES (?,?,?,?,?)";
 
 const std::string kInsertAppGroup =
   "INSERT INTO `app_group` (`application_id`, `functional_group_id`)"
@@ -503,7 +536,7 @@ const std::string kSelectUserMsgsVersion =
   "SELECT DISTINCT `number` FROM `version`";
 
 const std::string kSelectAppPolicies = "SELECT `id`, `memory_kb`, "
-                                       " `watchdog_timer_ms`, `certificate` FROM `application`";
+                                       " `heart_beat_timeout_ms`, `certificate` FROM `application`";
 
 const std::string kSelectAppGroups = "SELECT `f`.`name` FROM `app_group` AS `a`"
                                      "  LEFT JOIN `functional_group` AS `f` "

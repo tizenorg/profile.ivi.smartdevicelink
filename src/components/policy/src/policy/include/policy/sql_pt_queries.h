@@ -40,6 +40,7 @@ namespace sql_pt {
 
 extern const std::string kCreateSchema;
 extern const std::string kDropSchema;
+extern const std::string kDeleteData;
 extern const std::string kCheckPgNumber;
 extern const std::string kCheckDBIntegrity;
 extern const std::string kSelectRpc;
@@ -97,6 +98,7 @@ extern const std::string kSelectApplicationRevoked;
 extern const std::string kSelectApplicationRepresented;
 extern const std::string kSelectApplicationIsDefault;
 extern const std::string kUpdateIsDefault;
+extern const std::string kInsertInitData;
 
 }  // namespace sql_pt
 }  // namespace policy

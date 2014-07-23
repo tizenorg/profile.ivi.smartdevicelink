@@ -34,8 +34,8 @@
 #include <gtest/gtest.h>
 #include "json/reader.h"
 #include "json/value.h"
-#include "policy_table_interface_base/enums.h"
-#include "policy_table_interface_base/types.h"
+#include "./enums.h"
+#include "./types.h"
 #include "rpc_base/gtest_support.h"
 
 using namespace rpc::policy_table_interface_base;

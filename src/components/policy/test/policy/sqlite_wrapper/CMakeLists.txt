@@ -12,6 +12,7 @@ set(LIBRARIES
   gmock
   gmock_main
   dbms
+  sqlite3
 )
 
 set(DATABASE_SOURCES

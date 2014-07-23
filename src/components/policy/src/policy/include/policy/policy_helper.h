@@ -33,7 +33,7 @@
 #ifndef SRC_COMPONENTS_POLICY_INCLUDE_POLICY_POLICY_HELPER_H_
 #define SRC_COMPONENTS_POLICY_INCLUDE_POLICY_POLICY_HELPER_H_
 
-#include "policy_table_interface_base/functions.h"
+#include "./functions.h"
 #include "utils/shared_ptr.h"
 #include "policy/policy_types.h"
 
@@ -59,10 +59,10 @@ typedef policy_table::Strings::value_type StringsValueType;
  * @brief Helper struct to compare functional group names
  */
 struct CompareGroupName {
-  explicit CompareGroupName(const StringsValueType& group_name);
-  bool operator()(const StringsValueType& group_name_to_compare) const;
- private:
-  const StringsValueType& group_name_;
+    explicit CompareGroupName(const StringsValueType& group_name);
+    bool operator()(const StringsValueType& group_name_to_compare) const;
+  private:
+    const StringsValueType& group_name_;
 };
 
 /*
@@ -79,21 +79,21 @@ bool operator!=(const policy_table::ApplicationParams& first,
  * updated and notification will be sent to application
  */
 struct CheckAppPolicy {
-  CheckAppPolicy(PolicyManagerImpl* pm,
-                 const utils::SharedPtr<policy_table::Table> update);
-  bool HasSameGroups(const AppPoliciesValueType& app_policy,
-                     AppPermissions* perms) const;
-  bool IsNewAppication(const std::string& application_id) const;
-  void SendNotification(const AppPoliciesValueType& app_policy) const;
-  void SendOnPendingPermissions(const AppPoliciesValueType& app_policy,
-                                AppPermissions permissions) const;
-  bool IsAppRevoked(const AppPoliciesValueType& app_policy) const;
-  bool NicknamesMatch(const std::string app_id,
+    CheckAppPolicy(PolicyManagerImpl* pm,
+                   const utils::SharedPtr<policy_table::Table> update);
+    bool HasSameGroups(const AppPoliciesValueType& app_policy,
+                       AppPermissions* perms) const;
+    bool IsNewAppication(const std::string& application_id) const;
+    void SendNotification(const AppPoliciesValueType& app_policy) const;
+    void SendOnPendingPermissions(const AppPoliciesValueType& app_policy,
+                                  AppPermissions permissions) const;
+    bool IsAppRevoked(const AppPoliciesValueType& app_policy) const;
+    bool NicknamesMatch(const std::string app_id,
                         const AppPoliciesValueType& app_policy) const;
-  bool operator()(const AppPoliciesValueType& app_policy);
- private:
-  PolicyManagerImpl* pm_;
-  const utils::SharedPtr<policy_table::Table> update_;
+    bool operator()(const AppPoliciesValueType& app_policy);
+  private:
+    PolicyManagerImpl* pm_;
+    const utils::SharedPtr<policy_table::Table> update_;
 };
 
 /*
@@ -101,16 +101,16 @@ struct CheckAppPolicy {
  * parameters
  */
 struct FillNotificationData {
-  FillNotificationData(Permissions& data, GroupConsent group_state);
-  bool operator()(const RpcValueType& rpc);
-  void UpdateHMILevels(const policy_table::HmiLevels& in_hmi,
-                       std::set<HMILevel>& out_hmi);
-  void UpdateParameters(const policy_table::Parameters& in_parameters,
-                        std::set<Parameter>& out_parameter);
- private:
-  void ExcludeDisAllowed();
-  std::string current_key_;
-  Permissions& data_;
+    FillNotificationData(Permissions& data, GroupConsent group_state);
+    bool operator()(const RpcValueType& rpc);
+    void UpdateHMILevels(const policy_table::HmiLevels& in_hmi,
+                         std::set<HMILevel>& out_hmi);
+    void UpdateParameters(const policy_table::Parameters& in_parameters,
+                          std::set<Parameter>& out_parameter);
+  private:
+    void ExcludeDisAllowed();
+    std::string current_key_;
+    Permissions& data_;
 };
 
 /*
@@ -118,25 +118,25 @@ struct FillNotificationData {
  * which gather data for notification sending
  */
 struct ProcessFunctionalGroup {
-  ProcessFunctionalGroup(
+    ProcessFunctionalGroup(
       const policy_table::FunctionalGroupings& fg,
       const std::vector<FunctionalGroupPermission>& group_permissions,
       Permissions& data);
-  bool operator()(const StringsValueType& group_name);
- private:
-  GroupConsent GetGroupState(const std::string& group_name);
-  const policy_table::FunctionalGroupings& fg_;
-  Permissions& data_;
-  const std::vector<FunctionalGroupPermission>& group_permissions_;
+    bool operator()(const StringsValueType& group_name);
+  private:
+    GroupConsent GetGroupState(const std::string& group_name);
+    const policy_table::FunctionalGroupings& fg_;
+    Permissions& data_;
+    const std::vector<FunctionalGroupPermission>& group_permissions_;
 };
 
 struct FunctionalGroupInserter {
-  FunctionalGroupInserter(const policy_table::Strings& preconsented_groups,
-                          PermissionsList& list);
-  void operator()(const StringsValueType& group_name);
- private:
-  PermissionsList& list_;
-  const policy_table::Strings& preconsented_;
+    FunctionalGroupInserter(const policy_table::Strings& preconsented_groups,
+                            PermissionsList& list);
+    void operator()(const StringsValueType& group_name);
+  private:
+    PermissionsList& list_;
+    const policy_table::Strings& preconsented_;
 };
 
 /**
@@ -147,10 +147,10 @@ struct FunctionalGroupInserter {
  * @param permissions Struct to be filled with provided params
  */
 void FillFunctionalGroupPermissions(
-    FunctionalGroupIDs& ids,
-    FunctionalGroupNames& names,
-    GroupConsent state,
-    std::vector<FunctionalGroupPermission>& permissions);
+  FunctionalGroupIDs& ids,
+  FunctionalGroupNames& names,
+  GroupConsent state,
+  std::vector<FunctionalGroupPermission>& permissions);
 
 }
 

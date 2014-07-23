@@ -213,7 +213,7 @@ TEST_F(PolicyManagerImplTest, AddAppStopwatch) {
 }
 #endif  // EXTENDED_POLICY
 
-TEST_F(PolicyManagerImplTest, LoadPTFromFile) {
+TEST_F(PolicyManagerImplTest, ResetPT) {
   ::testing::NiceMock<MockPTRepresentation> mock_pt;
 
   EXPECT_CALL(mock_pt, Init()).WillOnce(Return(::policy::NONE))
@@ -223,11 +223,11 @@ TEST_F(PolicyManagerImplTest, LoadPTFromFile) {
 
   PolicyManagerImpl* manager = new PolicyManagerImpl();
   manager->ResetDefaultPT(::policy::PolicyTable(&mock_pt));
-  EXPECT_FALSE(manager->LoadPTFromFile("filename"));
+  EXPECT_FALSE(manager->ResetPT("filename"));
   // TODO(AOleynik): Sometimes fails, check this
-  //  EXPECT_TRUE(manager->LoadPTFromFile("filename"));
-  //  EXPECT_TRUE(manager->LoadPTFromFile("filename"));
-  EXPECT_FALSE(manager->LoadPTFromFile("filename"));
+  //  EXPECT_TRUE(manager->ResetPT("filename"));
+  //  EXPECT_TRUE(manager->ResetPT("filename"));
+  EXPECT_FALSE(manager->ResetPT("filename"));
 }
 
 TEST_F(PolicyManagerImplTest, CheckPermissions) {
@@ -426,6 +426,17 @@ TEST_F(PolicyManagerImplTest, GetPolicyTableStatus) {
   // TODO(AOleynik): Test is not finished, to be continued
   //manager->GetPolicyTableStatus();
 }
+
+TEST_F(PolicyManagerImplTest, MarkUnpairedDevice) {
+  ::testing::NiceMock<MockPTExtRepresentation> mock_pt;
+
+  EXPECT_CALL(mock_pt, SetUnpairedDevice("12345")).WillOnce(Return(true));
+
+  PolicyManagerImpl* manager = new PolicyManagerImpl();
+  manager->ResetDefaultPT(::policy::PolicyTable(&mock_pt));
+  manager->MarkUnpairedDevice("12345");
+}
+
 
 }  // namespace policy
 }  // namespace components

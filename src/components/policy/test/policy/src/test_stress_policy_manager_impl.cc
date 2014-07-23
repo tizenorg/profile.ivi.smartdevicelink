@@ -63,7 +63,7 @@ class PolicyManagerImplTest : public ::testing::Test {
     ofs.close();
 
     manager = new PolicyManagerImpl();
-    ASSERT_TRUE(manager->LoadPTFromFile(kNameFile));
+    ASSERT_TRUE(manager->InitPT(kNameFile));
   }
 
   static void TearDownTestCase() {

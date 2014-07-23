@@ -141,7 +141,7 @@
             mandatory="false" />
         <param name="vehicle_model" type="String" maxlength="100"
             mandatory="false" />
-        <param name="vehicle_year" type="Integer" minvalue="1900" maxvalue="2020"
+        <param name="vehicle_year" type="String" minlength="4" maxlength="4"
             mandatory="false" />
     </struct>
     <!-- module_config section end -->

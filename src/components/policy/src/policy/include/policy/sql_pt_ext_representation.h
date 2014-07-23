@@ -48,6 +48,8 @@ class SQLPTExtRepresentation : public SQLPTRepresentation,
                        std::string* default_hmi);
     bool GetPriority(const std::string& policy_app_id, std::string* priority);
     bool ResetUserConsent();
+    bool ResetDeviceConsents();
+    bool ResetAppConsents();
     bool GetUserPermissionsForDevice(const std::string& device_id,
                                      StringArray* consented_groups = NULL,
                                      StringArray* disallowed_groups = NULL);
@@ -105,7 +107,7 @@ class SQLPTExtRepresentation : public SQLPTRepresentation,
     }
 
     bool GetFunctionalGroupNames(FunctionalGroupNames& names);
-    bool CleanupUnpairedDevices(const DeviceIds& device_ids);
+    bool CleanupUnpairedDevices(const DeviceIds& device_ids) const;
 
     void Increment(const std::string& type) const;
     void Increment(const std::string& app_id, const std::string& type) const;
@@ -117,6 +119,8 @@ class SQLPTExtRepresentation : public SQLPTRepresentation,
     bool SetPredataPolicy(const std::string& app_id);
     bool SetIsPredata(const std::string& app_id, bool is_pre_data);
     bool IsPredataPolicy(const std::string& app_id) const;
+    bool SetUnpairedDevice(const std::string& device_id) const;
+    bool UnpairedDevicesList(DeviceIds* device_ids) const;
 
   private:
     void GatherModuleMeta(policy_table::ModuleMeta* meta) const;
@@ -156,6 +160,7 @@ class SQLPTExtRepresentation : public SQLPTRepresentation,
       GroupConsent state,
       std::vector<FunctionalGroupPermission>& permissions);
     bool CountUnconsentedGroups(const std::string& policy_app_id,
+                                const std::string& device_id,
                                 int* result) const;
 };
 

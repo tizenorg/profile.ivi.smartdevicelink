@@ -35,7 +35,7 @@
 #include "gmock/gmock.h"
 #include "policy/pt_ext_representation.h"
 #include "rpc_base/rpc_base.h"
-#include "policy_table_interface_base/types.h"
+#include "./types.h"
 #include "mock_pt_representation.h"
 
 namespace policy_table = ::rpc::policy_table_interface_base;
@@ -55,6 +55,8 @@ class MockPTExtRepresentation : public MockPTRepresentation,
                  bool(const std::string& app_id, std::string* priority));
     MOCK_METHOD0(ResetUserConsent,
                  bool());
+    MOCK_METHOD0(ResetDeviceConsents, bool());
+    MOCK_METHOD0(ResetAppConsents, bool());
     MOCK_METHOD3(GetUserPermissionsForDevice,
                  bool(const std::string&, StringArray*, StringArray*));
     MOCK_METHOD3(GetUserPermissionsForApp,
@@ -102,16 +104,20 @@ class MockPTExtRepresentation : public MockPTRepresentation,
                        void(const std::string& app_id, const std::string& type, const std::string& value));
     MOCK_CONST_METHOD3(Add,
                        void(const std::string& app_id, const std::string& type, int seconds));
-    MOCK_CONST_METHOD2(CountUnconsentedGroups,
-                       bool(const std::string& app_id, int* count));
+    MOCK_CONST_METHOD3(CountUnconsentedGroups,
+                       bool(const std::string& app_id,
+                            const std::string& device_id,
+                            int* count));
     MOCK_METHOD1(GetFunctionalGroupNames,
                  bool(FunctionalGroupNames& names));
-    MOCK_METHOD1(CleanupUnpairedDevices,
-                 bool(const DeviceIds& device_ids));
+    MOCK_CONST_METHOD1(CleanupUnpairedDevices,
+                       bool(const DeviceIds& device_ids));
     MOCK_METHOD2(ReactOnUserDevConsentForApp,
                  bool(const std::string& app_id, bool is_device_allowed));
     MOCK_METHOD1(SetPredataPolicy, bool(const std::string& app_id));
     MOCK_METHOD2(SetIsPredata, bool(const std::string& app_id, bool is_predata));
+    MOCK_CONST_METHOD1(SetUnpairedDevice, bool(const std::string& device_id));
+    MOCK_CONST_METHOD1(UnpairedDevicesList, bool(DeviceIds* device_ids));
 };
 
 }  // namespace policy

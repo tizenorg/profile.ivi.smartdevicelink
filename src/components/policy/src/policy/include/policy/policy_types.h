@@ -260,7 +260,9 @@ enum GroupType {
     kTypeAllowed,
     kTypeDisallowed,
     kTypePreconsented,
-    kTypeGeneral // means, all types above
+    kTypeGeneral, // means, all types above
+    kTypePreDataConsented,
+    kTypeDevice
 };
 
 /**
@@ -282,7 +284,7 @@ typedef std::map<uint32_t, std::pair<std::string, std::string> > FunctionalGroup
 /**
  * @brief Array of device ids, which are an identifiers in policy table
  */
-typedef std::set<std::string> DeviceIds;
+typedef std::vector<std::string> DeviceIds;
 
 }  //  namespace policy
 

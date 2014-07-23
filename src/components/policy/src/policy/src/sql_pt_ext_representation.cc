@@ -64,7 +64,20 @@ bool SQLPTExtRepresentation::CanAppStealFocus(const std::string& app_id) {
 }
 
 bool SQLPTExtRepresentation::ResetUserConsent() {
-  return dbms::SQLQuery(db()).Exec(sql_pt_ext::kResetUserConsent);
+  return ResetDeviceConsents() && ResetAppConsents();
+}
+
+bool SQLPTExtRepresentation::ResetDeviceConsents() {
+  dbms::SQLQuery query(db());
+  if (!query.Prepare(sql_pt_ext::kResetDeviceConsents)) {
+    LOG4CXX_WARN(logger_, "Incorrect delete statement from device_consents.");
+    return false;
+  }
+  return query.Exec();
+}
+
+bool SQLPTExtRepresentation::ResetAppConsents() {
+  return dbms::SQLQuery(db()).Exec(sql_pt_ext::kResetAppConsents);
 }
 
 bool SQLPTExtRepresentation::GetUserPermissionsForDevice(
@@ -125,11 +138,25 @@ bool SQLPTExtRepresentation::GetUserPermissionsForApp(
     return false;
   }
 
+  // Get all default groups - they should always be allowed
+  FunctionalGroupIDs predataconsented_groups;
+  if (!GetAllAppGroups(kPreDataConsentId, predataconsented_groups)) {
+    return false;
+  }
+
+  // Get all default groups - they should always be allowed
+  FunctionalGroupIDs device_groups;
+  if (!GetAllAppGroups(kDeviceId, device_groups)) {
+    return false;
+  }
+
   (*group_types)[kTypeDefault] = default_groups;
   (*group_types)[kTypeAllowed] = allowed_groups;
   (*group_types)[kTypeDisallowed] = disallowed_groups;
   (*group_types)[kTypePreconsented] = preconsented_groups;
   (*group_types)[kTypeGeneral] = all_groups;
+  (*group_types)[kTypePreDataConsented] = predataconsented_groups;
+  (*group_types)[kTypeDevice] = device_groups;
 
   return true;
 }
@@ -549,11 +576,10 @@ bool SQLPTExtRepresentation::SaveApplicationPolicies(
       3, std::string(policy_table::EnumToJsonString(it->second.default_hmi)));
     app_query.Bind(
       4, std::string(policy_table::EnumToJsonString(it->second.priority)));
-    printf("\n\t\t\t\tIs app Revoked: %s: %d\n", it->first.c_str(), it->second.is_null());
     app_query.Bind(
       5, it->second.is_null());
     app_query.Bind(6, it->second.memory_kb);
-    app_query.Bind(7, it->second.watchdog_timer_ms);
+    app_query.Bind(7, it->second.heart_beat_timeout_ms);
     it->second.certificate.is_initialized() ?
     app_query.Bind(8, *it->second.certificate) : app_query.Bind(8, std::string());
 
@@ -563,6 +589,20 @@ bool SQLPTExtRepresentation::SaveApplicationPolicies(
     }
 
     LOG4CXX_INFO(logger_, "Saving data for application: " << it->first);
+    if (it->second.is_string()) {
+      if (kDefaultId.compare(it->second.get_string()) == 0) {
+        if (!SetDefaultPolicy(it->first)) {
+          return false;
+        }
+      }
+      if (kPreDataConsentId.compare(it->second.get_string()) == 0) {
+        if (!SetPredataPolicy(it->first)) {
+          return false;
+        }
+      }
+      continue;
+    }
+
     if (!SaveAppGroup(it->first, it->second.groups)) {
       return false;
     }
@@ -604,7 +644,7 @@ bool SQLPTExtRepresentation::GatherApplicationPolicies(
     params.keep_context = query.GetBoolean(3);
     params.steal_focus = query.GetBoolean(4);
     *params.memory_kb = query.GetInteger(5);
-    *params.watchdog_timer_ms = query.GetInteger(6);
+    *params.heart_beat_timeout_ms = query.GetInteger(6);
     if (!query.IsNull(7)) {
       *params.certificate = query.GetString(7);
     }
@@ -1141,7 +1181,9 @@ bool SQLPTExtRepresentation::GetPriority(const std::string& policy_app_id,
 }
 
 bool SQLPTExtRepresentation::CountUnconsentedGroups(
-  const std::string& policy_app_id, int* result) const {
+  const std::string& policy_app_id,
+  const std::string& device_id,
+  int* result) const {
   LOG4CXX_INFO(logger_, "CountUnconsentedGroups");
   dbms::SQLQuery query(db());
   if (!query.Prepare(sql_pt_ext::kCountUnconsentedGroups)) {
@@ -1150,6 +1192,9 @@ bool SQLPTExtRepresentation::CountUnconsentedGroups(
   }
 
   query.Bind(0, policy_app_id);
+  query.Bind(1, device_id);
+  query.Bind(2, kDefaultId);
+  query.Bind(3, kPreDataConsentId);
 
   if (!query.Exec()) {
     LOG4CXX_INFO(logger_, "Error during executing unconsented groups.");
@@ -1157,7 +1202,6 @@ bool SQLPTExtRepresentation::CountUnconsentedGroups(
   }
   *result = query.GetInteger(0);
   return true;
-
 }
 
 bool SQLPTExtRepresentation::SaveMessageString(
@@ -1186,7 +1230,7 @@ bool SQLPTExtRepresentation::SaveMessageString(
 }
 
 bool SQLPTExtRepresentation::CleanupUnpairedDevices(
-  const DeviceIds& device_ids) {
+  const DeviceIds& device_ids) const {
   LOG4CXX_INFO(logger_, "CleanupUnpairedDevices");
   dbms::SQLQuery delete_device_query(db());
   if (!delete_device_query.Prepare(sql_pt::kDeleteDevice)) {
@@ -1288,6 +1332,37 @@ bool SQLPTExtRepresentation::SetIsPredata(const std::string& app_id,
   if (!query.Exec()) {
     LOG4CXX_WARN(logger_, "Failed update is_predata");
     return false;
+  }
+  return true;
+}
+
+bool SQLPTExtRepresentation::SetUnpairedDevice(const std::string& device_id) const {
+  LOG4CXX_TRACE(logger_, "Set unpaired device: " << device_id);
+  dbms::SQLQuery query(db());
+  if (!query.Prepare(sql_pt_ext::kUpdateUnpairedDevice)) {
+    LOG4CXX_WARN(logger_, "Incorect statement for updating unpaired device");
+    return false;
+  }
+
+  query.Bind(0, true);
+  query.Bind(1, device_id);
+  if (!query.Exec()) {
+    LOG4CXX_WARN(logger_, "Failed update unpaired device");
+    return false;
+  }
+  return true;
+}
+
+bool SQLPTExtRepresentation::UnpairedDevicesList(DeviceIds* device_ids) const {
+  LOG4CXX_TRACE(logger_, "Get list of unpaired devices");
+  dbms::SQLQuery query(db());
+  if (!query.Prepare(sql_pt_ext::kSelectUnpairedDevices)) {
+    LOG4CXX_WARN(logger_, "Incorect statement for selecting unpaired devices");
+    return false;
+  }
+
+  while (query.Next()) {
+    device_ids->push_back(query.GetString(0));
   }
   return true;
 }

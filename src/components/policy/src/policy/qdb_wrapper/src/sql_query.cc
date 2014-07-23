@@ -234,20 +234,25 @@ bool SQLQuery::GetBoolean(int pos) const {
 }
 
 int SQLQuery::GetInteger(int pos) const {
-  return *static_cast<int*>(qdb_cell(result_, current_row_, pos));
+  return rows_ == 0 ? 0 :
+      *static_cast<int*>(qdb_cell(result_, current_row_, pos));
 }
 
 double SQLQuery::GetDouble(int pos) const {
-  return *static_cast<double*>(qdb_cell(result_, current_row_, pos));
+  return rows_ == 0 ? 0 :
+      *static_cast<double*>(qdb_cell(result_, current_row_, pos));
 }
 
 std::string SQLQuery::GetString(int pos) const {
+  if (rows_ == 0) {
+    return "";
+  }
   void* str = qdb_cell(result_, current_row_, pos);
   return str ? static_cast<const char*>(str) : "";
 }
 
 bool SQLQuery::IsNull(int pos) const {
-  return qdb_cell_type(result_, current_row_, pos) == QDB_NULL;
+  return rows_ == 0 || qdb_cell_type(result_, current_row_, pos) == QDB_NULL;
 }
 
 const std::string& SQLQuery::query() const {

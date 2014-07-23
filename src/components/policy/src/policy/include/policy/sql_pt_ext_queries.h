@@ -40,7 +40,8 @@ namespace sql_pt_ext {
 
 extern const std::string kSelectKeepContext;
 extern const std::string kSelectStealFocus;
-extern const std::string kResetUserConsent;
+extern const std::string kResetDeviceConsents;
+extern const std::string kResetAppConsents;
 extern const std::string kCountDeviceConsentGroup;
 extern const std::string kCountDevice;
 extern const std::string kSelectDeviceConsentedGroup;
@@ -78,6 +79,8 @@ extern const std::string kDeleteAppConsent;
 extern const std::string kSelectApplicationIsPreData;
 extern const std::string kUpdateIsPredata;
 extern const std::string kHasAppPreloadedGroups;
+extern const std::string kUpdateUnpairedDevice;
+extern const std::string kSelectUnpairedDevices;
 
 }  // namespace sql_pt_ext
 }  // namespace policy

@@ -32,11 +32,12 @@
 #include <gtest/gtest.h>
 #include <sqlite3.h>
 #include <vector>
+#include <algorithm>
 #include "json/value.h"
 #include "policy/sql_pt_ext_representation.h"
 #include "policy/policy_types.h"
-#include "policy_table_interface_base/types.h"
-#include "policy_table_interface_base/enums.h"
+#include "./types.h"
+#include "./enums.h"
 
 using policy::SQLPTExtRepresentation;
 
@@ -45,31 +46,31 @@ namespace components {
 namespace policy {
 
 class SQLPTExtRepresentationTest : public ::testing::Test {
- protected:
-  static sqlite3* conn;
-  static SQLPTExtRepresentation* reps;
-  static const std::string kFileName;
+  protected:
+    static sqlite3* conn;
+    static SQLPTExtRepresentation* reps;
+    static const std::string kFileName;
 
-  static void SetUpTestCase() {
-    reps = new SQLPTExtRepresentation;
-    EXPECT_EQ(::policy::SUCCESS, reps->Init());
-    EXPECT_EQ(SQLITE_OK, sqlite3_open(kFileName.c_str(), &conn));
-  }
+    static void SetUpTestCase() {
+      reps = new SQLPTExtRepresentation;
+      EXPECT_EQ(::policy::SUCCESS, reps->Init());
+      EXPECT_EQ(SQLITE_OK, sqlite3_open(kFileName.c_str(), &conn));
+    }
 
-  static void TearDownTestCase() {
-    EXPECT_TRUE(reps->Clear());
-    EXPECT_TRUE(reps->Close());
-    delete reps;
-    sqlite3_close(conn);
-    remove(kFileName.c_str());
-  }
+    static void TearDownTestCase() {
+      EXPECT_TRUE(reps->Drop());
+      EXPECT_TRUE(reps->Close());
+      delete reps;
+      sqlite3_close(conn);
+      remove(kFileName.c_str());
+    }
 };
 
 sqlite3* SQLPTExtRepresentationTest::conn = 0;
 SQLPTExtRepresentation* SQLPTExtRepresentationTest::reps = 0;
 const std::string SQLPTExtRepresentationTest::kFileName = "policy.sqlite";
 
-::testing::AssertionResult IsValid(const policy_table::Table &table) {
+::testing::AssertionResult IsValid(const policy_table::Table& table) {
   if (table.is_valid()) {
     return ::testing::AssertionSuccess();
   } else {
@@ -115,21 +116,21 @@ TEST_F(SQLPTExtRepresentationTest, SaveGenerateSnapshot) {
   module_config["endpoints"]["0x00"] = Json::Value(Json::objectValue);
   module_config["endpoints"]["0x00"]["default"] = Json::Value(Json::arrayValue);
   module_config["endpoints"]["0x00"]["default"][0] = Json::Value(
-      "http://ford.com/cloud/default");
+        "http://ford.com/cloud/default");
   module_config["notifications_per_minute_by_priority"] = Json::Value(
-      Json::objectValue);
+        Json::objectValue);
   module_config["notifications_per_minute_by_priority"]["emergency"] =
-      Json::Value(1);
+    Json::Value(1);
   module_config["notifications_per_minute_by_priority"]["navigation"] =
-      Json::Value(2);
+    Json::Value(2);
   module_config["notifications_per_minute_by_priority"]["voiceCommunication"] =
-      Json::Value(3);
+    Json::Value(3);
   module_config["notifications_per_minute_by_priority"]["communication"] =
-      Json::Value(4);
+    Json::Value(4);
   module_config["notifications_per_minute_by_priority"]["normal"] = Json::Value(
-      5);
+        5);
   module_config["notifications_per_minute_by_priority"]["none"] = Json::Value(
-      6);
+        6);
   module_config["vehicle_make"] = Json::Value("MakeT");
   module_config["vehicle_model"] = Json::Value("ModelT");
   module_config["vehicle_year"] = Json::Value(2014);
@@ -159,7 +160,7 @@ TEST_F(SQLPTExtRepresentationTest, SaveGenerateSnapshot) {
   default_group["rpcs"]["Update"]["parameters"][0] = Json::Value("speed");
 
   Json::Value& consumer_friendly_messages =
-      policy_table["consumer_friendly_messages"];
+    policy_table["consumer_friendly_messages"];
   consumer_friendly_messages["version"] = Json::Value("1.2");
 
   Json::Value& app_policies = policy_table["app_policies"];
@@ -191,7 +192,7 @@ TEST_F(SQLPTExtRepresentationTest, CanAppKeepContext) {
   const char* query_delete = "DELETE FROM `application`; ";
   ASSERT_EQ(SQLITE_OK, sqlite3_exec(conn, query_delete, NULL, NULL, NULL));
   const char* query_insert = "INSERT INTO `application` (`id`, `memory_kb`,"
-      " `watchdog_timer_ms`, `keep_context`) VALUES ('12345', 5, 10, 1)";
+                             " `watchdog_timer_ms`, `keep_context`) VALUES ('12345', 5, 10, 1)";
   ASSERT_EQ(SQLITE_OK, sqlite3_exec(conn, query_insert, NULL, NULL, NULL));
   EXPECT_FALSE(reps->CanAppKeepContext("0"));
   EXPECT_TRUE(reps->CanAppKeepContext("12345"));
@@ -201,7 +202,7 @@ TEST_F(SQLPTExtRepresentationTest, CanAppStealFocus) {
   const char* query_delete = "DELETE FROM `application`; ";
   ASSERT_EQ(SQLITE_OK, sqlite3_exec(conn, query_delete, NULL, NULL, NULL));
   const char* query_insert = "INSERT INTO `application` (`id`, `memory_kb`,"
-      " `watchdog_timer_ms`, `steal_focus`) VALUES ('12345', 5, 10, 1)";
+                             " `watchdog_timer_ms`, `steal_focus`) VALUES ('12345', 5, 10, 1)";
   ASSERT_EQ(SQLITE_OK, sqlite3_exec(conn, query_insert, NULL, NULL, NULL));
   EXPECT_TRUE(reps->CanAppStealFocus("12345"));
   EXPECT_FALSE(reps->CanAppStealFocus("0"));
@@ -209,7 +210,7 @@ TEST_F(SQLPTExtRepresentationTest, CanAppStealFocus) {
 
 TEST_F(SQLPTExtRepresentationTest, IncrementGlobalCounter) {
   const char* query_update = "UPDATE `usage_and_error_count` SET"
-      " `count_of_sync_reboots` = 0";
+                             " `count_of_sync_reboots` = 0";
   ASSERT_EQ(SQLITE_OK, sqlite3_exec(conn, query_update, NULL, NULL, NULL));
 
   reps->Increment("count_of_sync_reboots");
@@ -217,7 +218,7 @@ TEST_F(SQLPTExtRepresentationTest, IncrementGlobalCounter) {
   reps->Increment("count_of_sync_reboots");
 
   const char* query_select =
-      "SELECT `count_of_sync_reboots` FROM `usage_and_error_count`";
+    "SELECT `count_of_sync_reboots` FROM `usage_and_error_count`";
   sqlite3_stmt* statement;
   ASSERT_EQ(SQLITE_OK,
             sqlite3_prepare(conn, query_select, -1, &statement, NULL));
@@ -228,7 +229,7 @@ TEST_F(SQLPTExtRepresentationTest, IncrementGlobalCounter) {
 
 TEST_F(SQLPTExtRepresentationTest, IncrementAppCounter) {
   const char* query_delete =
-      "DELETE FROM `app_level` WHERE `application_id` = '12345'";
+    "DELETE FROM `app_level` WHERE `application_id` = '12345'";
   ASSERT_EQ(SQLITE_OK, sqlite3_exec(conn, query_delete, NULL, NULL, NULL));
 
   reps->Increment("12345", "count_of_user_selections");
@@ -236,8 +237,8 @@ TEST_F(SQLPTExtRepresentationTest, IncrementAppCounter) {
   reps->Increment("12345", "count_of_user_selections");
 
   const char* query_select =
-      "SELECT `count_of_user_selections` FROM `app_level`"
-          "  WHERE `application_id` = '12345'";
+    "SELECT `count_of_user_selections` FROM `app_level`"
+    "  WHERE `application_id` = '12345'";
   sqlite3_stmt* statement;
   ASSERT_EQ(SQLITE_OK,
             sqlite3_prepare(conn, query_select, -1, &statement, NULL));
@@ -248,15 +249,15 @@ TEST_F(SQLPTExtRepresentationTest, IncrementAppCounter) {
 
 TEST_F(SQLPTExtRepresentationTest, SetAppInfo) {
   const char* query_delete =
-      "DELETE FROM `app_level` WHERE `application_id` = '12345'";
+    "DELETE FROM `app_level` WHERE `application_id` = '12345'";
   ASSERT_EQ(SQLITE_OK, sqlite3_exec(conn, query_delete, NULL, NULL, NULL));
 
   reps->Set("12345", "app_registration_language_gui", "ru-ru");
   reps->Set("12345", "app_registration_language_vui", "en-en");
 
   const char* query_select = "SELECT `app_registration_language_gui`, "
-      " `app_registration_language_vui` FROM `app_level`"
-      "  WHERE `application_id` = '12345'";
+                             " `app_registration_language_vui` FROM `app_level`"
+                             "  WHERE `application_id` = '12345'";
   sqlite3_stmt* statement;
   ASSERT_EQ(SQLITE_OK,
             sqlite3_prepare(conn, query_select, -1, &statement, NULL));
@@ -273,20 +274,54 @@ TEST_F(SQLPTExtRepresentationTest, SetAppInfo) {
 
 TEST_F(SQLPTExtRepresentationTest, AddAppStopwatch) {
   const char* query_delete =
-      "DELETE FROM `app_level` WHERE `application_id` = '12345'";
+    "DELETE FROM `app_level` WHERE `application_id` = '12345'";
   ASSERT_EQ(SQLITE_OK, sqlite3_exec(conn, query_delete, NULL, NULL, NULL));
 
   reps->Add("12345", "minutes_in_hmi_full", 10);
   reps->Add("12345", "minutes_in_hmi_full", 60);
 
   const char* query_select = "SELECT `minutes_in_hmi_full` FROM `app_level`"
-      "  WHERE `application_id` = '12345'";
+                             "  WHERE `application_id` = '12345'";
   sqlite3_stmt* statement;
   ASSERT_EQ(SQLITE_OK,
             sqlite3_prepare(conn, query_select, -1, &statement, NULL));
   ASSERT_EQ(SQLITE_ROW, sqlite3_step(statement));
   EXPECT_EQ(70, sqlite3_column_int(statement, 0));
   EXPECT_EQ(SQLITE_DONE, sqlite3_step(statement));
+}
+
+TEST_F(SQLPTExtRepresentationTest, SetUnpairedDevice) {
+  const char* query_delete = "DELETE FROM `device`";
+  ASSERT_EQ(SQLITE_OK, sqlite3_exec(conn, query_delete, NULL, NULL, NULL));
+  const char* query_insert = "INSERT INTO `device` (`id`) VALUES('12345')";
+  ASSERT_EQ(SQLITE_OK, sqlite3_exec(conn, query_insert, NULL, NULL, NULL));
+
+  ASSERT_TRUE(reps->SetUnpairedDevice("12345"));
+
+  const char* query_select = "SELECT `id` FROM `device` WHERE `unpaired` = 1";
+  sqlite3_stmt* statement;
+  ASSERT_EQ(SQLITE_OK,
+            sqlite3_prepare(conn, query_select, -1, &statement, NULL));
+  ASSERT_EQ(SQLITE_ROW, sqlite3_step(statement));
+  std::string output(reinterpret_cast<const char*>(sqlite3_column_text(statement, 0)));
+  EXPECT_EQ("12345", output);
+  EXPECT_EQ(SQLITE_DONE, sqlite3_step(statement));
+}
+
+TEST_F(SQLPTExtRepresentationTest, UnpairedDevicesList) {
+  const char* query_delete = "DELETE FROM `device`";
+  ASSERT_EQ(SQLITE_OK, sqlite3_exec(conn, query_delete, NULL, NULL, NULL));
+  const char* query_insert = "INSERT INTO `device` (`id`, `unpaired`)"
+                             " VALUES('12345', 1)";
+  ASSERT_EQ(SQLITE_OK, sqlite3_exec(conn, query_insert, NULL, NULL, NULL));
+  query_insert = "INSERT INTO `device` (`id`, `unpaired`) VALUES('54321', 1)";
+  ASSERT_EQ(SQLITE_OK, sqlite3_exec(conn, query_insert, NULL, NULL, NULL));
+
+  std::vector<std::string> output;
+  ASSERT_TRUE(reps->UnpairedDevicesList(&output));
+  ASSERT_EQ(2, output.size());
+  EXPECT_NE(output.end(), std::find(output.begin(), output.end(), "12345"));
+  EXPECT_NE(output.end(), std::find(output.begin(), output.end(), "54321"));
 }
 
 }  // namespace policy

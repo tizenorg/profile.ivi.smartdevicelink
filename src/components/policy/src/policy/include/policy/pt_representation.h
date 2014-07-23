@@ -36,7 +36,7 @@
 #include <vector>
 #include <string>
 #include "policy/policy_types.h"
-#include "policy_table_interface_base/types.h"
+#include "./types.h"
 
 namespace policy_table = rpc::policy_table_interface_base;
 
@@ -181,6 +181,12 @@ class PTRepresentation {
     virtual bool Clear() = 0;
 
     /**
+     * Drops policy table (schema and content)
+     * @return true if successfully
+     */
+    virtual bool Drop() = 0;
+
+    /**
      * @brief Get snapshot of Policy Table
      * including app_policies, functional_groups,
      * device_info, statistics, excluding user messages
@@ -257,13 +263,6 @@ class PTRepresentation {
      * @return true if success
      */
     virtual bool SetDefaultPolicy(const std::string& app_id) = 0;
-
-    /**
-     * @brief Removes unpaired device records and related records from DB
-     * @param device_ids List of device_id, which should be removed
-     * @return true, if succedeed, otherwise - false
-     */
-    virtual bool CleanupUnpairedDevices(const DeviceIds& device_ids) = 0;
 };
 
 }  //  namespace policy

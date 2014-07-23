@@ -109,6 +109,18 @@ class PTExtRepresentation : public virtual PTRepresentation {
     virtual bool ResetUserConsent() = 0;
 
     /**
+     * @brief Reset user consent for device data
+     * @return
+     */
+    virtual bool ResetDeviceConsents() = 0;
+
+    /**
+     * @brief Reset user consent for applications permissions
+     * @return
+     */
+    virtual bool ResetAppConsents() = 0;
+
+    /**
      * @brief Get user permissions for device data usage
      * @param device_id Generated or obtained id of device
      * @param consented_groups Groups consented by user
@@ -262,6 +274,7 @@ class PTExtRepresentation : public virtual PTRepresentation {
                      int seconds) const = 0;
 
     virtual bool CountUnconsentedGroups(const std::string& policy_app_id,
+                                        const std::string& device_id,
                                         int* result) const = 0;
 
     /**
@@ -286,6 +299,26 @@ class PTExtRepresentation : public virtual PTRepresentation {
      * @return true, if succeeded, otherwise - false
      */
     virtual bool SetIsPredata(const std::string& app_id, bool is_pre_data) = 0;
+
+    /**
+     * @brief Removes unpaired devices
+     * @return true if success
+     */
+    virtual bool CleanupUnpairedDevices(const DeviceIds& device_ids) const = 0;
+
+    /**
+     * Sets flag of unpaired device
+     * @param device_id
+     * @return true if success
+     */
+    virtual bool SetUnpairedDevice(const std::string& device_id) const = 0;
+
+    /**
+     * Gets list of unpaired devices
+     * @param device_ids output list
+     * @return true if success
+     */
+    virtual bool UnpairedDevicesList(DeviceIds* device_ids) const = 0;
 };
 }  //  namespace policy
 

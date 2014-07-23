@@ -35,7 +35,7 @@
 #include "gmock/gmock.h"
 #include "policy/pt_representation.h"
 #include "rpc_base/rpc_base.h"
-#include "policy_table_interface_base/types.h"
+#include "./types.h"
 
 namespace policy_table = ::rpc::policy_table_interface_base;
 
@@ -79,6 +79,8 @@ class MockPTRepresentation : virtual public PTRepresentation {
                  bool());
     MOCK_METHOD0(Clear,
                  bool());
+    MOCK_METHOD0(Drop,
+                 bool());
     MOCK_CONST_METHOD0(GenerateSnapshot,
                        utils::SharedPtr<policy_table::Table>());
     MOCK_METHOD1(Save,
@@ -95,8 +97,6 @@ class MockPTRepresentation : virtual public PTRepresentation {
     MOCK_CONST_METHOD1(IsApplicationRepresented, bool(const std::string& app_id));
     MOCK_CONST_METHOD1(IsDefaultPolicy, bool(const std::string& app_id));
     MOCK_METHOD1(SetDefaultPolicy, bool(const std::string& app_id));
-    MOCK_METHOD1(CleanupUnpairedDevices,
-                 bool(const DeviceIds& device_ids));
     MOCK_CONST_METHOD1(IsPredataPolicy, bool(const std::string& app_id));
 };
 

@@ -106,7 +106,7 @@
     <struct name="Rpcs">
         <param name="user_consent_prompt" type="String" minlegth="1"
             maxlength="255" mandatory="false"/>
-        <param name="rpcs" type="Rpc" />
+        <param name="rpcs" type="Rpc" null_values_allowed="true"/>
     </struct>
     <!-- app_policies section end -->
 
@@ -146,7 +146,7 @@
             mandatory="false" />
         <param name="vehicle_model" type="String" maxlength="100"
             mandatory="false" />
-        <param name="vehicle_year" type="Integer" minvalue="1900" maxvalue="2020"
+        <param name="vehicle_year" type="String" minlength="4" maxlength="4"
             mandatory="false" />
     </struct>
     <!-- module_config section end -->

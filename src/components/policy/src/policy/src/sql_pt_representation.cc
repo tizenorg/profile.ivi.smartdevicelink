@@ -280,9 +280,15 @@ InitResult SQLPTRepresentation::Init() {
   }
   dbms::SQLQuery query(db());
   if (!query.Exec(sql_pt::kCreateSchema)) {
-    LOG4CXX_INFO(
+    LOG4CXX_ERROR(
       logger_,
       "Failed creating schema of database: " << query.LastError().text());
+    return InitResult::FAIL;
+  }
+  if (!query.Exec(sql_pt::kInsertInitData)) {
+    LOG4CXX_ERROR(
+      logger_,
+      "Failed insert init data to database: " << query.LastError().text());
     return InitResult::FAIL;
   }
   return InitResult::SUCCESS;
@@ -297,11 +303,27 @@ VehicleData SQLPTRepresentation::GetVehicleData() {
   return VehicleData();
 }
 
-bool SQLPTRepresentation::Clear() {
+bool SQLPTRepresentation::Drop() {
   dbms::SQLQuery query(db());
   if (!query.Exec(sql_pt::kDropSchema)) {
     LOG4CXX_WARN(logger_,
+                 "Failed dropping database: " << query.LastError().text());
+    return false;
+  }
+  return true;
+}
+
+bool SQLPTRepresentation::Clear() {
+  dbms::SQLQuery query(db());
+  if (!query.Exec(sql_pt::kDeleteData)) {
+    LOG4CXX_ERROR(logger_,
                  "Failed clearing database: " << query.LastError().text());
+    return false;
+  }
+  if (!query.Exec(sql_pt::kInsertInitData)) {
+    LOG4CXX_ERROR(
+      logger_,
+      "Failed insert init data to database: " << query.LastError().text());
     return false;
   }
   return true;
@@ -316,7 +338,7 @@ utils::SharedPtr<policy_table::Table> SQLPTRepresentation::GenerateSnapshot() co
   GatherDeviceData(&*table->policy_table.device_data);
   GatherFunctionalGroupings(&table->policy_table.functional_groupings);
   GatherConsumerFriendlyMessages(
-    &table->policy_table.consumer_friendly_messages);
+    &*table->policy_table.consumer_friendly_messages);
   GatherApplicationPolicies(&table->policy_table.app_policies);
   return table;
 }
@@ -342,7 +364,7 @@ void SQLPTRepresentation::GatherModuleConfig(
     config->timeout_after_x_seconds = query.GetInteger(4);
     *config->vehicle_make = query.GetString(5);
     *config->vehicle_model = query.GetString(6);
-    *config->vehicle_year = query.GetInteger(7);
+    *config->vehicle_year = query.GetString(7);
   }
 
   dbms::SQLQuery endpoints(db());
@@ -475,7 +497,7 @@ bool SQLPTRepresentation::GatherApplicationPolicies(
       continue;
     }
     *params.memory_kb = query.GetInteger(1);
-    *params.watchdog_timer_ms = query.GetInteger(2);
+    *params.heart_beat_timeout_ms = query.GetInteger(2);
     if (!query.IsNull(3)) {
       *params.certificate = query.GetString(3);
     }
@@ -511,7 +533,7 @@ bool SQLPTRepresentation::Save(const policy_table::Table& table) {
     return false;
   }
   if (!SaveConsumerFriendlyMessages(
-        table.policy_table.consumer_friendly_messages)) {
+        *table.policy_table.consumer_friendly_messages)) {
     db_->RollbackTransaction();
     return false;
   }
@@ -636,7 +658,7 @@ bool SQLPTRepresentation::SaveApplicationPolicies(
     app_query.Bind(0, it->first);
     app_query.Bind(1, it->second.is_null());
     app_query.Bind(2, it->second.memory_kb);
-    app_query.Bind(3, it->second.watchdog_timer_ms);
+    app_query.Bind(3, it->second.heart_beat_timeout_ms);
     it->second.certificate.is_initialized() ?
     app_query.Bind(4, *it->second.certificate) : app_query.Bind(4);
 
@@ -646,6 +668,15 @@ bool SQLPTRepresentation::SaveApplicationPolicies(
     }
 
     LOG4CXX_INFO(logger_, "Saving data for application: " << it->first);
+    if (it->second.is_string()) {
+      if (kDefaultId.compare(it->second.get_string()) == 0) {
+        if (!SetDefaultPolicy(it->first)) {
+          return false;
+        }
+      }
+      continue;
+    }
+
     if (!SaveAppGroup(it->first, it->second.groups)) {
       return false;
     }
@@ -1178,28 +1209,8 @@ bool SQLPTRepresentation::SetDefaultPolicy(const std::string& app_id) {
   return SetIsDefault(app_id, true);
 }
 
-bool SQLPTRepresentation::CleanupUnpairedDevices(const DeviceIds& device_ids) {
-  LOG4CXX_INFO(logger_, "CleanupUnpairedDevices");
-  dbms::SQLQuery delete_device_query(db());
-  if (!delete_device_query.Prepare(sql_pt::kDeleteDevice)) {
-    LOG4CXX_WARN(logger_, "Incorrect statement for device delete.");
-    return true;
-  }
-
-  DeviceIds::const_iterator it = device_ids.begin();
-  DeviceIds::const_iterator it_end = device_ids.end();
-  for (; it != it_end; ++it) {
-    delete_device_query.Bind(0, (*it));
-    if (!delete_device_query.Exec() || !delete_device_query.Reset()) {
-      LOG4CXX_WARN(logger_, "Failed to delete from device");
-      return false;
-    }
-  }
-  return true;
-}
-
 bool SQLPTRepresentation::SetIsDefault(const std::string& app_id,
-                                       bool is_default) {
+                                       bool is_default) const {
   LOG4CXX_TRACE(logger_, "Set flag is_default of application");
   dbms::SQLQuery query(db());
   if (!query.Prepare(sql_pt::kUpdateIsDefault)) {

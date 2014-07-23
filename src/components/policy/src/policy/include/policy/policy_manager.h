@@ -49,12 +49,11 @@ class PolicyManager : public usage_statistics::StatisticsManager {
     virtual void set_listener(PolicyListener* listener) = 0;
 
     /**
-     *@brief Loads Policy Table from json file. Used for loading
-     * Preloaded Policy Table or after Master Reset of the system.
-     *@param file_name Path to preloaded PT file
-     * @return bool Success of operation
+     * Inits Policy Table
+     * @param file_name Path to preloaded PT file
+     * @return true if successfully
      */
-    virtual bool LoadPTFromFile(const std::string& file_name) = 0;
+    virtual bool InitPT(const std::string& file_name) = 0;
 
     /**
      * @brief Updates Policy Table from binary message received from
@@ -65,6 +64,13 @@ class PolicyManager : public usage_statistics::StatisticsManager {
      * @return bool Success of operation
      */
     virtual bool LoadPT(const std::string& file, const BinaryMessage& pt_content) = 0;
+
+    /**
+     * Resets Policy Table
+     * @param file_name Path to preloaded PT file
+     * @return true if successfully
+     */
+    virtual bool ResetPT(const std::string& file_name) = 0;
 
     /**
      * @brief Gets URL for sending PTS to from PT itself.
@@ -180,6 +186,16 @@ class PolicyManager : public usage_statistics::StatisticsManager {
      */
     virtual DeviceConsent GetUserConsentForDevice(
       const std::string& device_id) = 0;
+
+    /**
+     * @brief Get user consent for application
+     * @param device_id Device id
+     * @param policy_app_id Unique application id
+     * @param permissions Array of functional groups permissions
+     */
+    virtual void GetUserConsentForApp(
+      const std::string& device_id, const std::string& policy_app_id,
+      std::vector<FunctionalGroupPermission>& permissions) = 0;
 
     /**
      * @brief Set user consent for mobile device data connection
@@ -304,11 +320,17 @@ class PolicyManager : public usage_statistics::StatisticsManager {
       const std::string& application_id) = 0;
 
     /**
+     * Marks device as upaired
+     * @param device_id id device
+     */
+    virtual void MarkUnpairedDevice(const std::string& device_id) = 0;
+
+    /**
      * @brief Removes unpaired device records and related records from DB
      * @param device_ids List of device_id, which should be removed
      * @return true, if succedeed, otherwise - false
      */
-    virtual bool CleanupUnpairedDevices(const DeviceIds& device_ids) = 0;
+    virtual bool CleanupUnpairedDevices() = 0;
 
     /**
      * @brief Check if app can keep context.

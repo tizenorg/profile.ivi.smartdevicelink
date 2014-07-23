@@ -97,11 +97,22 @@ CheckAppPolicy::CheckAppPolicy(
 
 bool CheckAppPolicy::HasSameGroups(const AppPoliciesValueType& app_policy,
                                    AppPermissions* perms) const {
-  policy_table::Strings groups_new = app_policy.second.groups;
-  std::sort(groups_new.begin(), groups_new.end(), Compare);
   const std::string app_id = app_policy.first;
   AppPoliciesConstItr it = pm_->policy_table_snapshot_->policy_table
                            .app_policies.find(app_id);
+
+  if (app_policy.second.is_string()) {
+    return (it->second.is_string() &&
+            app_policy.second.get_string().compare(it->second.get_string()) == 0);
+  } else {
+    if (it->second.is_string()) {
+      return false;
+    }
+  }
+
+  policy_table::Strings groups_new = app_policy.second.groups;
+  std::sort(groups_new.begin(), groups_new.end(), Compare);
+
   policy_table::Strings groups_curr = (*it).second.groups;
   std::sort(groups_curr.begin(), groups_curr.end(), Compare);
 
@@ -322,7 +333,20 @@ bool CheckAppPolicy::operator()(const AppPoliciesValueType& app_policy) {
     SendOnPendingPermissions(app_policy, permissions_diff);
   }
 
-  // TODO(PV): if 'device' was update with new/other func groups => user consent for device should be cleared.
+  // if 'device' was update with new/other func groups => user consent
+  // for device should be cleared.
+  if (kDeviceId == app_id) {
+#if defined (EXTENDED_POLICY)
+    // TODO(AOleynik): Check design for more convenient access to policy ext data
+    PTExtRepresentation* pt_ext = dynamic_cast<PTExtRepresentation*>(pm_->policy_table_
+                                  .pt_data().get());
+    if (pt_ext) {
+      if (!pt_ext->ResetDeviceConsents()) {
+        return false;
+      }
+    }
+#endif
+  }
 
   return true;
 }

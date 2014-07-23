@@ -37,7 +37,7 @@
 #include <vector>
 #include "policy/pt_representation.h"
 #include "rpc_base/rpc_base.h"
-#include "policy_table_interface_base/types.h"
+#include "./types.h"
 
 namespace policy_table = rpc::policy_table_interface_base;
 
@@ -77,6 +77,7 @@ class SQLPTRepresentation : public virtual PTRepresentation {
     InitResult Init();
     bool Close();
     bool Clear();
+    bool Drop();
     virtual utils::SharedPtr<policy_table::Table> GenerateSnapshot() const;
     bool Save(const policy_table::Table& table);
     bool GetInitialAppData(const std::string& app_id, StringArray* nicknames =
@@ -135,10 +136,9 @@ class SQLPTRepresentation : public virtual PTRepresentation {
     virtual bool IsDefaultPolicy(const std::string& app_id) const;
     virtual bool IsPredataPolicy(const std::string& app_id) const;
     virtual bool SetDefaultPolicy(const std::string& app_id);
-    bool CleanupUnpairedDevices(const DeviceIds& device_ids);
 
     dbms::SQLDatabase* db() const;
-    virtual bool SetIsDefault(const std::string& app_id, bool is_default);
+    virtual bool SetIsDefault(const std::string& app_id, bool is_default) const;
 
   private:
     static const std::string kDatabaseName;

@@ -40,19 +40,14 @@ if (EXTENDED_POLICY_FLAG)
 endif()
 
 #Generation of policy table interface...
-include(${CMAKE_SOURCE_DIR}/tools/intergen/GenerateInterfaceLibrary.cmake)
-
-if (EXTENDED_POLICY_FLAG)
-  GenerateInterfaceLibrary("policy_table_interface_ext.xml" policy_table_interface_base)
-else ()
-  GenerateInterfaceLibrary("policy_table_interface.xml" policy_table_interface_base)
-endif()
+#include(${CMAKE_SOURCE_DIR}/tools/intergen/GenerateInterfaceLibrary.cmake)
 
 include_directories (
   ./include
   ./usage_statistics/include
   ${CMAKE_SOURCE_DIR}/src/components/rpc_base/include
-  ${CMAKE_CURRENT_BINARY_DIR}
+  ${CMAKE_SOURCE_DIR}/src/thirdPartyLibs/jsoncpp/include
+  #${CMAKE_CURRENT_BINARY_DIR}
   ${CMAKE_SOURCE_DIR}/src/components/utils/include/
   ${CMAKE_SOURCE_DIR}/src/components/config_profile/include
 )
@@ -60,7 +55,6 @@ include_directories (
 set(SOURCES
   ./src/policy_manager_impl.cc
   ./src/policy_helper.cc
-  ./src/syncp_adapter.cc
   ./src/policy_table.cc
   ./src/sql_pt_queries.cc
   ./src/sql_pt_representation.cc
@@ -75,6 +69,15 @@ endif ()
 
 add_subdirectory(usage_statistics)
 
+if (EXTENDED_POLICY_FLAG)
+add_subdirectory(policy_table/table_struct_ext)
+include_directories(./policy_table/table_struct_ext)
+else ()
+include_directories(./policy_table/table_struct)
+add_subdirectory(policy_table/table_struct)
+endif()
+
+set(LIBRARIES ConfigProfile policy_struct dbms jsoncpp Utils)
 if (CMAKE_SYSTEM_NAME STREQUAL "QNX")
   # --- QDB Wrapper
   include_directories (qdb_wrapper/include)
@@ -83,12 +86,11 @@ else ()
   # --- SQLite Wrapper
   include_directories (sqlite_wrapper/include)
   add_subdirectory(sqlite_wrapper)
+  list(APPEND LIBRARIES sqlite3)
 endif ()
 
-set(LIBRARIES ConfigProfile dbms policy_table_interface_base)
-
 add_library(${target} SHARED ${SOURCES})
-target_link_libraries(${target} ${LIBRARIES})
+target_link_libraries(${target} ${LIBRARIES} )
 
 if(ENABLE_LOG)
   add_dependencies(${target} liblog4cxx)

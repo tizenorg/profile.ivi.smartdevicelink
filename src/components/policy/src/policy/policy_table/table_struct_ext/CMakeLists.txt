@@ -28,16 +28,14 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-set(target dbms)
+set(target policy_struct)
 
-find_package(Sqlite3 REQUIRED)
-
-include_directories(include)
+include_directories(.)
 
 set(SOURCES
-  src/sql_database.cc
-  src/sql_query.cc
-  src/sql_error.cc
+  ./enums.cc
+  ./types.cc
+  ./validation.cc
 )
 
 add_library(${target} ${SOURCES})
