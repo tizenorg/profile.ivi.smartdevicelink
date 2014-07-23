@@ -15,6 +15,8 @@ set (SOURCES
     ./src/lock_posix.cc
     ./src/date_time.cc
     ./src/signals_linux.cc
+    ./src/system.cc
+    ./src/resource_usage.cc
 )
 
 if (BUILD_BACKTRACE_SUPPORT)
@@ -38,6 +40,7 @@ else()
 endif()
 
 if(ENABLE_LOG)
-  target_link_libraries("Utils" log4cxx)
+  add_dependencies("Utils" liblog4cxx)
+  target_link_libraries("Utils" log4cxx -L${LOG4CXX_LIBS_DIRECTORY})
 endif()
 
