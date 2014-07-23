@@ -1,3 +1,6 @@
+
+set(target TransportManager)
+
 include_directories (
   ./include
   ../utils/include/
@@ -68,7 +71,7 @@ add_library("TransportManager" ${SOURCES})
 
 if (BUILD_USB_SUPPORT)
   if (CMAKE_SYSTEM_NAME STREQUAL "QNX")
-    target_link_libraries ("TransportManager" usbdi )
+    target_link_libraries(${target} usbdi)
   endif()
 endif(BUILD_USB_SUPPORT)
 
