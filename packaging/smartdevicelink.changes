@@ -1,3 +1,7 @@
+* Thu Aug 07 2014 Ossama Othman <ossama.othman@intel.com> accepted/tizen/ivi/panda/20140403.015744-2-g2948856
+- Remove dependency to MiniBrowser
+- Make SmartDeviceLink work with Crosswalk.
+
 * Thu Mar 06 2014 Ossama Othman <ossama.othman@intel.com> 66d2006
 - Added missing dependencies.
 - Remove executable bit from JavaScript and CSS files.
