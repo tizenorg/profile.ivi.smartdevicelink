@@ -1,13 +1,18 @@
+%define WIDGET_INSTALL_DIR /opt/usr/apps/.preinstallWidgets
+%define WIDGET_PATH %{WIDGET_INSTALL_DIR}/%{name}.wgt
+
 Name:          smartdevicelink
 Summary:       GENIVI SmartDeviceLink (SDL)
 Version:       2.0
 Release:       1
-Group:         Network & Connectivity/Connection Management
+Group:         Automotive/GENIVI
 License:       BSD-3-Clause
 URL:           http://projects.genivi.org/smartdevicelink/
 Source:        %{name}-%{version}.tar.gz
 Source1:       %{name}.xml
 Source1001:    %{name}.manifest
+Source2001:    config.xml
+Source2002:    manifest.json
 BuildRequires: cmake
 BuildRequires: pkgconfig(bluez)
 BuildRequires: pkgconfig(gstreamer-1.0)
@@ -16,8 +21,8 @@ BuildRequires: pkgconfig(liblog4cxx)
 BuildRequires: pkgconfig(avahi-client)
 BuildRequires: pkgconfig(libpulse-simple)
 BuildRequires: doxygen
-BuildRequires: fdupes
-Requires:      avahi-libs
+BuildRequires: zip
+Requires:      crosswalk
 Requires(post): /usr/bin/pkg_initdb
 
 # Custom SDL-enabled HMIs should "Provide" this virtual package.
@@ -87,19 +92,30 @@ install -m 0755 SDL_Core/src/thirdPartyLibs/MessageBroker/libMessageBroker.so %{
 install -m 0755 SDL_Core/src/thirdPartyLibs/jsoncpp/libjsoncpp.so %{buildroot}%{_libdir}
 
 # Sample HMI
-mkdir -p %{buildroot}%{_datadir}/%{name}
-install -m 0644 SDL_Core/src/appMain/audio.8bit.wav %{buildroot}%{_datadir}/%{name}
-cp -R SDL_Core/src/components/HMI %{buildroot}%{_datadir}/%{name}
-%fdupes -s %{buildroot}%{_datadir}/%{name}
+# The SDL HMI will be launched with xwalk-launcher so package it as a
+# Crosswalk widget.
+mkdir -p %{buildroot}/%{WIDGET_INSTALL_DIR}
+cd %{dirname:%SOURCE2001} \
+  && zip %{buildroot}%{WIDGET_PATH} config.xml manifest.json \
+  && cd -
+cd SDL_Core/src/components/HMI \
+  && zip -r %{buildroot}%{WIDGET_PATH} . \
+  && cd -
 
 # Create the 'hmi_link' file with the location of the sample HMI.
-echo %{_datadir}/%{name}/HMI/index.html > %{buildroot}%{_sysconfdir}/%{name}/hmi_link
+# Normally this would be the path to the top-level index.html file for
+# the SDL HMI, e.g.  %%{_datadir}/%%{name}/HMI/index.html.  However,
+# since we are using xwalk-laucher to launch the HMI we must instead
+# provide the SDL Crosswalk application ID, i.s. SmartDeviceLink,
+# instead.
+echo SDL0000001.SmartDeviceLink > %{buildroot}%{_sysconfdir}/%{name}/hmi_link
 
 # Install Tizen package metadata for smartdevicelink
 mkdir -p %{buildroot}%{_datadir}/packages/
 mkdir -p %{buildroot}%{_datadir}/icons/default/small
 install -m 0644 %{SOURCE1} %{buildroot}%{_datadir}/packages/%{name}.xml
-ln -sf %{_datadir}/%{name}/HMI/images/sdl/devices.png %{buildroot}%{_datadir}/icons/default/small/
+install -m 0644 SDL_Core/src/components/HMI/images/sdl/devices.png \
+                %{buildroot}%{_datadir}/icons/default/small/
 
 %clean
 
@@ -107,8 +123,13 @@ ln -sf %{_datadir}/%{name}/HMI/images/sdl/devices.png %{buildroot}%{_datadir}/ic
 
 %post sample-hmi
 /usr/bin/pkg_initdb
+su app -c "xwalkctl -i /opt/usr/apps/.preinstallWidgets/%{name}.wgt"
 
 %postun -p /sbin/ldconfig
+
+%postun sample-hmi
+/usr/bin/pkg_initdb
+su app -c "xwalkctl -u $(su app -c "xwalkctl list | grep SmartDeviceLink | cut -c 1-32")"
 
 %files
 %manifest %{name}.manifest
@@ -116,10 +137,9 @@ ln -sf %{_datadir}/%{name}/HMI/images/sdl/devices.png %{buildroot}%{_datadir}/ic
 %{_bindir}/smartDeviceLinkCore
 %{_libdir}/*.so*
 %config %{_sysconfdir}/%{name}/log4cxx.properties
-%{_datadir}/%{name}/audio.8bit.wav
 
 %files sample-hmi
 %config %{_sysconfdir}/%{name}/hmi_link
-%{_datadir}/%{name}/HMI/*
 %{_datadir}/packages/%{name}.xml
 %{_datadir}/icons/default/small/*.png
+/opt/usr/apps/.preinstallWidgets/%{name}.wgt

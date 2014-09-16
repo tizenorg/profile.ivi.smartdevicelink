@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets"
+	id="http://com.intel.tizen/smartdevicelink" version="1.0.0" viewmodes="maximized">
+	<access origin="*" subdomains="true"></access>
+	<tizen:application id="SDL0000001.SmartDeviceLink"
+		package="SDL0000001" required_version="2.0" />
+	<content src="index.html" />
+	<icon src="images/sdl/devices.png" />
+	<name>SmartDeviceLink</name>
+	<tizen:privilege name="http://tizen.org/privilege/application.launch" />
+	<tizen:privilege name="http://tizen.org/privilege/filesystem.read" />
+	<tizen:privilege name="http://tizen.org/privilege/filesystem.write" />
+	<tizen:privilege name="http://tizen.org/privilege/fullscreen" />
+	<tizen:privilege name="http://tizen.org/privilege/content.read" />
+        <tizen:privilege name="http://tizen.org/privilege/bluetooth.admin" />
+        <tizen:privilege name="http://tizen.org/privilege/bluetooth.spp" />
+        <tizen:privilege name="http://tizen.org/privilege/bluetooth.gap" />
+        <tizen:privilege name="http://tizen.org/privilege/speech" />
+	<tizen:privilege name="http://tizen.org/privilege/vehicle" />
+	<tizen:setting screen-orientation="portrait"
+		context-menu="enable" background-support="disable" encryption="disable"
+		install-location="auto" hwkey-event="enable" />
+</widget>

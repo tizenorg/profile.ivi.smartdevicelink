@@ -124,7 +124,6 @@ file_str.close();
 
 if (stat(hmi_link.c_str(), &sb) == -1) {
   LOG4CXX_INFO(logger, "HMI index.html doesn't exist!");
-  return false;
 }
 // Create a child process.
 pid_hmi = fork();

@@ -17,8 +17,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-s") #It will be appended to CMAKE_CXX_FLAGS in rel
 
 add_definitions(-DSDL_LOG4CXX_PROPERTIES_FILE="/etc/smartdevicelink/log4cxx.properties")
 add_definitions(-DSDL_HMI_LINK_FILE="/etc/smartdevicelink/hmi_link")
-add_definitions(-DSDL_HMI_BROWSER_PATH="/usr/bin/xwalk" -DSDL_HMI_BROWSER_ARG0="xwalk" -DSDL_HMI_BROWSER_ARG1="")
-add_definitions(-DSDL_AUDIO_SAMPLE="/usr/share/smartdevicelink/audio.8bit.wav")
+add_definitions(-DSDL_HMI_BROWSER_PATH="/usr/bin/xwalk-launcher" -DSDL_HMI_BROWSER_ARG0="xwalk-launcher" -DSDL_HMI_BROWSER_ARG1="")
 
 option( BUILD_SHARED_LIBS "Build all libraries as shared (if ON) or static (if OFF)" OFF)
 
