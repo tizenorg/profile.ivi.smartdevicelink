@@ -78,7 +78,10 @@ namespace {
 
 const char kBrowser[] = SDL_HMI_BROWSER_PATH;
 const char kBrowserName[] = SDL_HMI_BROWSER_ARG0;
+
+#ifdef SDL_HMI_BROWSER_ARG1
 const char kBrowserParams[] = SDL_HMI_BROWSER_ARG1;
+#endif
 
 /**
  * Initialize HTML based HMI.
@@ -124,7 +127,12 @@ file_str.close();
 
 if (stat(hmi_link.c_str(), &sb) == -1) {
   LOG4CXX_INFO(logger, "HMI index.html doesn't exist!");
-  return false;
+  // The hmi_link file in Tizen contains the Crosswalk application ID,
+  // not a top-level HMI web page such as index.html, since we're
+  // launching the HMI through xwalk-launcher.  Ignore the fact that
+  // such a file doesn't exist.
+  //
+  // return false;
 }
 // Create a child process.
 pid_hmi = fork();
@@ -140,6 +148,7 @@ switch (pid_hmi) {
       LOG4CXX_WARN(logger, "Open dev0 failed!");
       return false;
     }
+
     // close input/output file descriptors.
     close(STDIN_FILENO);
     close(STDOUT_FILENO);
@@ -151,7 +160,11 @@ switch (pid_hmi) {
     dup2(fd_dev0, STDERR_FILENO);
 
     // Execute the program.
-    execlp(kBrowser, kBrowserName, kBrowserParams, hmi_link.c_str(),
+    execlp(kBrowser, kBrowserName,
+#ifdef SDL_HMI_BROWSER_ARG1
+           kBrowserParams,
+#endif
+           hmi_link.c_str(),
            reinterpret_cast<char*>(0));
     LOG4CXX_WARN(logger, "execl() failed! Install chromium-browser!");
 
