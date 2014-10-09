@@ -2,8 +2,8 @@
 <widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets"
 	id="http://com.intel.tizen/smartdevicelink" version="1.0.0" viewmodes="maximized">
 	<access origin="*" subdomains="true"></access>
-	<tizen:application id="SDL0000001.SmartDeviceLink"
-		package="SDL0000001" required_version="2.0" />
+	<tizen:application id="%SDL_APPID%"
+		package="%SDL_PKGID%" required_version="2.0" />
 	<content src="index.html" />
 	<icon src="images/sdl/devices.png" />
 	<name>SmartDeviceLink</name>

@@ -1,3 +1,7 @@
+* Thu Oct 09 2014 Ossama Othman <ossama.othman@intel.com> submit/tizen_ivi/20140918.175344-1-gedd6685
+- Launch SDL HMIs via xwalk-launcher.
+- Use pkgcmd to install SDL Crosswalk app.
+
 * Thu Aug 07 2014 Ossama Othman <ossama.othman@intel.com> accepted/tizen/ivi/panda/20140403.015744-2-g2948856
 - Remove dependency to MiniBrowser
 - Make SmartDeviceLink work with Crosswalk.

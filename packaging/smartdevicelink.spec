@@ -1,3 +1,6 @@
+%define SDL_PKGID SDL0000001
+%define SDL_APPID %{SDL_PKGID}.SmartDeviceLink
+
 Name:          smartdevicelink
 Summary:       GENIVI mobile device and HMI integration
 Version:       2.0
@@ -8,7 +11,7 @@ URL:           http://projects.genivi.org/smartdevicelink/
 Source:        %{name}-%{version}.tar.gz
 Source1:       %{name}.xml
 Source1001:    %{name}.manifest
-Source2001:    config.xml
+Source2001:    config.xml.in
 Source2002:    manifest.json
 BuildRequires: cmake
 BuildRequires: pkgconfig(bluez)
@@ -21,7 +24,6 @@ BuildRequires: pkgconfig(libtzplatform-config)
 BuildRequires: doxygen
 BuildRequires: zip
 Requires:      crosswalk
-Requires(post): /usr/bin/pkg_initdb
 
 # Custom SDL-enabled HMIs should "Provide" this virtual package.
 Requires:      smartdevicelink-hmi
@@ -91,12 +93,15 @@ install -m 0755 SDL_Core/src/thirdPartyLibs/jsoncpp/libjsoncpp.so %{buildroot}%{
 # The SDL HMI will be launched with xwalk-launcher so package it as a
 # Crosswalk widget.
 mkdir -p %{buildroot}%{TZ_SYS_APP_PREINSTALL}
-cd %{dirname:%SOURCE2001} \
-  && zip %{buildroot}%{TZ_SYS_APP_PREINSTALL}/%{name}.wgt config.xml manifest.json \
-  && cd -
-cd SDL_Core/src/components/HMI \
-  && zip -r %{buildroot}%{TZ_SYS_APP_PREINSTALL}/%{name}.wgt . \
-  && cd -
+pushd %{dirname:%SOURCE2001}
+sed -e 's/%%SDL_PKGID%%/%{SDL_PKGID}/' \
+    -e 's/%%SDL_APPID%%/%{SDL_APPID}/' %{SOURCE2001} > config.xml
+zip %{buildroot}%{TZ_SYS_APP_PREINSTALL}/%{name}.wgt config.xml manifest.json
+rm config.xml
+popd
+pushd SDL_Core/src/components/HMI
+zip -r %{buildroot}%{TZ_SYS_APP_PREINSTALL}/%{name}.wgt .
+popd
 
 # Create the 'hmi_link' file with the location of the sample HMI.
 # Normally this would be the path to the top-level index.html file for
@@ -104,7 +109,7 @@ cd SDL_Core/src/components/HMI \
 # since we are using xwalk-laucher to launch the HMI we must instead
 # provide the SDL Crosswalk application ID, i.s. SmartDeviceLink,
 # instead.
-echo SDL0000001.SmartDeviceLink > %{buildroot}%{_sysconfdir}/%{name}/hmi_link
+echo %{SDL_APPID} > %{buildroot}%{_sysconfdir}/%{name}/hmi_link
 
 # Install Tizen package metadata for smartdevicelink
 mkdir -p %{buildroot}%{_datadir}/packages/
@@ -118,14 +123,12 @@ install -m 0644 SDL_Core/src/components/HMI/images/sdl/devices.png \
 %post -p /sbin/ldconfig
 
 %post sample-hmi
-/usr/bin/pkg_initdb
-su app -c "xwalkctl -i %{TZ_SYS_APP_PREINSTALL}/%{name}.wgt"
+su app -c "pkgcmd -q -i -t wgt -p %{TZ_SYS_APP_PREINSTALL}/%{name}.wgt"
 
 %postun -p /sbin/ldconfig
 
 %postun sample-hmi
-/usr/bin/pkg_initdb
-su app -c "xwalkctl -u $(su app -c "xwalkctl list | grep SmartDeviceLink | cut -c 1-32")"
+su app -c "pkgcmd -u -n %{SDL_PKGID} -q"
 
 %files
 %manifest %{name}.manifest
