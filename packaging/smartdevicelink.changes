@@ -1,0 +1,24 @@
+* Thu Nov 06 2014 Ossama Othman <ossama.othman@intel.com> b01151e
+- Package SmartDeviceLink 3.5.
+
+* Thu Aug 07 2014 Ossama Othman <ossama.othman@intel.com> accepted/tizen/ivi/panda/20140403.015744-2-g2948856
+- Remove dependency to MiniBrowser
+- Make SmartDeviceLink work with Crosswalk.
+
+* Thu Mar 06 2014 Ossama Othman <ossama.othman@intel.com> 66d2006
+- Added missing dependencies.
+- Remove executable bit from JavaScript and CSS files.
+- Update to 2.0 release.
+- Removed editor backup files shipped upstream SDL code.
+
+* Tue Dec 17 2013 Ossama Othman <ossama.othman@intel.com> ivi_oct_m2@f3d53b2
+- [TIVI-2269] Support launching SDL from ICO homescreen.
+
+* Thu Aug 15 2013 Ossama Othman <ossama.othman@intel.com> 14ffb07
+- Override hardcoded paths and filenames.
+- Added missing shared libraries to package.
+- Corrected packaging errors, and created new sample-hmi sub-package.
+- Removed executable bits from non-executable files.
+- Initial packaging of SmartDeviceLink.
+- Address build errors when using g++ 4.7 or better.
+

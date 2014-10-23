@@ -135,6 +135,11 @@ if (ENABLE_GCOV)
 endif()
 set(CMAKE_CXX_FLAGS_RELEASE "-fPIC -s -O2") #It will be appended to CMAKE_CXX_FLAGS in release
 
+add_definitions(-DSDL_LOG4CXX_PROPERTIES_FILE="/etc/smartdevicelink/log4cxx.properties")
+add_definitions(-DSDL_HMI_LINK_FILE="/etc/smartdevicelink/hmi_link")
+add_definitions(-DSDL_CONFIG_FILE="/etc/smartdevicelink/smartDeviceLink.ini")
+add_definitions(-DSDL_HMI_BROWSER_PATH="/usr/bin/xwalk-launcher" -DSDL_HMI_BROWSER_ARG0="xwalk-launcher")
+
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_definitions(-DOS_LINUX)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "QNX")

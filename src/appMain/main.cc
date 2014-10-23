@@ -60,12 +60,30 @@
 
 // ----------------------------------------------------------------------------
 
+#ifndef SDL_LOG4CXX_PROPERTIES_FILE
+#define SDL_LOG4CXX_PROPERTIES_FILE "log4cxx.properties"
+#endif
+
+#ifndef SDL_HMI_LINK_FILE
+#define SDL_HMI_LINK_FILE "hmi_link"
+#endif
+
+#ifndef SDL_HMI_BROWSER_PATH
+#define SDL_HMI_BROWSER_PATH "/usr/bin/chromium-browser"
+#define SDL_HMI_BROWSER_ARG0 "chromium-browser"
+#define SDL_HMI_BROWSER_ARG1 "--auth-schemes=basic,digest,ntlm"
+#endif
+
 CREATE_LOGGERPTR_GLOBAL(logger, "appMain")
 namespace {
 
-const std::string kBrowser = "/usr/bin/chromium-browser";
-const std::string kBrowserName = "chromium-browser";
-const std::string kBrowserParams = "--auth-schemes=basic,digest,ntlm";
+const std::string kBrowser = SDL_HMI_BROWSER_PATH;
+const std::string kBrowserName = SDL_HMI_BROWSER_ARG0;
+
+#ifdef SDL_HMI_BROWSER_ARG1
+const std::string kBrowserParams = SDL_HMI_BROWSER_ARG1;
+#endif
+
 const std::string kLocalHostAddress = "127.0.0.1";
 const std::string kApplicationVersion = "SDL_RB_B3.5";
 
@@ -77,13 +95,13 @@ const std::string kApplicationVersion = "SDL_RB_B3.5";
 bool InitHmi() {
 
 struct stat sb;
-if (stat("hmi_link", &sb) == -1) {
+if (stat(SDL_HMI_LINK_FILE, &sb) == -1) {
   LOG4CXX_FATAL(logger, "File with HMI link doesn't exist!");
   return false;
 }
 
 std::ifstream file_str;
-file_str.open("hmi_link");
+file_str.open(SDL_HMI_LINK_FILE);
 
 if (!file_str.is_open()) {
   LOG4CXX_FATAL(logger, "File with HMI link was not opened!");
@@ -103,11 +121,19 @@ LOG4CXX_INFO(logger,
 file_str.close();
 
 if (stat(hmi_link.c_str(), &sb) == -1) {
-  LOG4CXX_FATAL(logger, "HMI index.html doesn't exist!");
-  return false;
+  LOG4CXX_INFO(logger, "HMI index.html doesn't exist!");
+  // The hmi_link file in Tizen contains the Crosswalk application ID,
+  // not a top-level HMI web page such as index.html, since we're
+  // launching the HMI through xwalk-launcher.  Ignore the fact that
+  // such a file doesn't exist.
+  //
+  // return false;
 }
-  return utils::System(kBrowser, kBrowserName).Add(kBrowserParams).Add(hmi_link)
-      .Execute();
+  return utils::System(kBrowser, kBrowserName)
+#ifdef SDL_HMI_BROWSER_ARG1
+      .Add(kBrowserParams)
+#endif
+      .Add(hmi_link).Execute();
 }
 #endif  // WEB_HMI
 
@@ -140,7 +166,7 @@ int32_t main(int32_t argc, char** argv) {
 
   // --------------------------------------------------------------------------
   // Logger initialization
-  INIT_LOGGER("log4cxx.properties");
+  INIT_LOGGER(SDL_LOG4CXX_PROPERTIES_FILE);
 
   threads::Thread::SetNameForId(threads::Thread::CurrentId(), "MainThread");
 
@@ -157,7 +183,7 @@ int32_t main(int32_t argc, char** argv) {
   if ((argc > 1)&&(0 != argv)) {
       profile::Profile::instance()->config_file_name(argv[1]);
   } else {
-      profile::Profile::instance()->config_file_name("smartDeviceLink.ini");
+      profile::Profile::instance()->config_file_name(SDL_CONFIG_FILE);
   }
 
 #ifdef __QNX__

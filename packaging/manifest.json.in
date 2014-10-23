@@ -1,0 +1,12 @@
+{
+  "name": "SmartDeviceLink HMI",
+  "xwalk_version": "%SDL_VERSION%",
+  "app": {
+    "launch":{
+      "local_path": "index.html"
+    }
+  },
+  "icons": {
+    "128": "images/sdl/devices.png"
+  }
+}

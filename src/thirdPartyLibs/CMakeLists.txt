@@ -47,22 +47,27 @@ set(3RD_PARTY_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}/3rd_party")
 
 if(ENABLE_LOG OR HMI_DBUS_API)
 
+# Tizen: Use the expat package already provided by Tizen IVI.
+
 # --- libexpat
-  add_subdirectory(expat-2.1.0)
+#  add_subdirectory(expat-2.1.0)
 
 endif()
 
 if(ENABLE_LOG)
 
+# Tizen: Use the log4cxx related packages already provided by Tizen IVI.
+
 # --- libapr-1
-  add_subdirectory(apr-cmake)
+#  add_subdirectory(apr-cmake)
 
 # --- apr-util
-  add_subdirectory(apr-util-cmake)
+#  add_subdirectory(apr-util-cmake)
 
 # --- log4cxx
-  add_subdirectory(apache-log4cxx-cmake)
-  set(LOG4CXX_LIBS_DIRECTORY ${LOG4CXX_LIBS_DIRECTORY} PARENT_SCOPE)
+#  add_subdirectory(apache-log4cxx-cmake)
+#set(LOG4CXX_LIBS_DIRECTORY ${LOG4CXX_LIBS_DIRECTORY} PARENT_SCOPE)
+set(LOG4CXX_LIBS_DIRECTORY /usr/lib PARENT_SCOPE)
 
 endif()
 
