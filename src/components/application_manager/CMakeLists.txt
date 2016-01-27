@@ -2,7 +2,6 @@ if (EXTENDED_POLICY_FLAG)
   add_definitions(-DEXTENDED_POLICY)
 endif()
 
-
 include_directories (
   ./include/
   ../utils/include/
@@ -422,3 +421,5 @@ if(ENABLE_LOG)
   add_dependencies("ApplicationManager" liblog4cxx)
   target_link_libraries("ApplicationManager" log4cxx -L${LOG4CXX_LIBS_DIRECTORY})
 endif()
+add_dependencies("ApplicationManager" "HMI_API")
+
