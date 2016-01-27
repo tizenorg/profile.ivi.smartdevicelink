@@ -6,6 +6,7 @@ pkg_check_modules(GLIB2 REQUIRED glib-2.0)
 add_definitions(${GLIB2_CFLAGS})
 set(default_includes
   ${GSTREAMER_gst_INCLUDE_DIR}
+  ${GSTREAMER_gstconfig_INCLUDE_DIR}
   ${GLIB_glib_2_INCLUDE_DIR}
 )
 set(default_sources
@@ -74,4 +75,5 @@ set (SOURCES
 )
 
 add_library("MediaManager" ${SOURCES} ${default_sources})
+add_dependencies("MediaManager" "HMI_API")
 target_link_libraries("MediaManager" ${LIBRARIES})

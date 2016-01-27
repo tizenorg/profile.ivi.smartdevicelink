@@ -28,4 +28,5 @@ set (SOURCES
 )
 
 add_library("TimeTester" ${SOURCES})
+add_dependencies("TimeTester" "HMI_API")
 target_link_libraries("TimeTester" ${LIBRARIES})
