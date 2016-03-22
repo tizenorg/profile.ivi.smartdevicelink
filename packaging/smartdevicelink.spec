@@ -26,7 +26,7 @@ BuildRequires: pkgconfig(libudev)
 BuildRequires: pkgconfig(sqlite3)
 BuildRequires: doxygen
 BuildRequires: zip
-Requires:      crosswalk
+Requires:      crosswalk-tizen
 
 # Custom SDL-enabled HMIs should "Provide" this virtual package.
 Requires:      smartdevicelink-hmi
