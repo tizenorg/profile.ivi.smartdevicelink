@@ -7,7 +7,7 @@ FIND_PATH(GSTREAMER_gst_INCLUDE_DIR gst/gst.h
                                     ENV INCLUDE DOC "Directory containing gst/gst.h include file")
 
 FIND_PATH(GSTREAMER_gstconfig_INCLUDE_DIR gst/gstconfig.h
-                                          PATHS ${GSTREAMER_DIR}/include ${GSTREAMER_DIR}/lib/include /usr/local/include/gstreamer-1.0 /usr/include/gstreamer-1.0 /usr/local/lib/include/gstreamer-1.0 /usr/lib/include/gstreamer-1.0 /usr/lib/gstreamer-1.0/include
+                                          PATHS ${GSTREAMER_DIR}/include ${GSTREAMER_DIR}/lib/include /usr/local/include/gstreamer-1.0 /usr/include/gstreamer-1.0 /usr/local/lib/include/gstreamer-1.0 /usr/lib/include/gstreamer-1.0 ${CMAKE_INSTALL_LIBDIR}/gstreamer-1.0/include
                                           ENV INCLUDE DOC "Directory containing gst/gstconfig.h include file")
 
 FIND_LIBRARY(GSTREAMER_gstaudio_LIBRARY NAMES gstaudio-1.0 libgstaudio-1.0
